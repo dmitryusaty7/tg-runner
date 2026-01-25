@@ -1,5 +1,7 @@
 import { AUTO, Game, Scale } from 'phaser';
 import { HEIGHT, WIDTH } from '../config/gameConfig';
+import { MainMenu } from './scenes/MainMenu';
+import { GameOver } from './scenes/GameOver';
 import { RunnerScene } from './scenes/RunnerScene';
 
 //  Find out more information about the Game Config at:
@@ -22,7 +24,9 @@ const config = {
         }
     },
     scene: [
-        RunnerScene
+        MainMenu,
+        RunnerScene,
+        GameOver
     ]
 };
 

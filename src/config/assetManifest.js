@@ -1,18 +1,23 @@
 export const ASSETS = {
     background: {
-        sky: 'assets/moonrunner/background/sky.png',
-        stars: 'assets/moonrunner/background/stars.png',
-        moonSurface: 'assets/moonrunner/background/moon_surface.png'
+        sky: 'assets/moonrunner/backgrounds/bg_sky.png',
+        farCraters: 'assets/moonrunner/backgrounds/bg_far_craters.png',
+        ground: 'assets/moonrunner/backgrounds/bg_ground.png'
     },
     player: {
-        vaderRun: 'assets/moonrunner/player/vader_run.png',
-        vaderJump: 'assets/moonrunner/player/vader_jump.png',
-        vaderHurt: 'assets/moonrunner/player/vader_hurt.png'
+        sheet: 'assets/moonrunner/player/player_sheet.png',
+        sheetData: 'assets/moonrunner/player/player_sheet.json'
     },
     obstacles: {
-        crater: 'assets/moonrunner/obstacles/crater.png',
-        rockSmall: 'assets/moonrunner/obstacles/rock_small.png',
-        rockBig: 'assets/moonrunner/obstacles/rock_big.png',
-        meteor: 'assets/moonrunner/obstacles/meteor.png'
+        sheet: 'assets/moonrunner/obstacles/obstacles.png',
+        sheetData: 'assets/moonrunner/obstacles/obstacles.json'
+    },
+    fx: {
+        meteorFlame: 'assets/moonrunner/fx/meteor_flame.png',
+        meteorFlameData: 'assets/moonrunner/fx/meteor_flame.json'
+    },
+    ui: {
+        sheet: 'assets/moonrunner/ui/ui.png',
+        sheetData: 'assets/moonrunner/ui/ui.json'
     }
 };
