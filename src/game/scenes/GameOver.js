@@ -7,22 +7,40 @@ export class GameOver extends Scene
         super('GameOver');
     }
 
-    create ()
+    create (data)
     {
-        this.cameras.main.setBackgroundColor(0xff0000);
+        const { width, height } = this.scale;
+        const score = data?.score ?? 0;
 
-        this.add.image(512, 384, 'background').setAlpha(0.5);
+        this.cameras.main.setBackgroundColor('#2a0d0d');
 
-        this.add.text(512, 384, 'Game Over', {
-            fontFamily: 'Arial Black', fontSize: 64, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 8,
+        this.add.text(width * 0.5, height * 0.4, 'Конец игры', {
+            fontFamily: 'Arial Black',
+            fontSize: 56,
+            color: '#ffffff',
+            align: 'center'
+        }).setOrigin(0.5);
+
+        this.add.text(width * 0.5, height * 0.5, `Счёт: ${score}`, {
+            fontFamily: 'Arial',
+            fontSize: 36,
+            color: '#ffe08a',
+            align: 'center'
+        }).setOrigin(0.5);
+
+        this.add.text(width * 0.5, height * 0.62, 'Клик, чтобы начать заново', {
+            fontFamily: 'Arial',
+            fontSize: 28,
+            color: '#dddddd',
             align: 'center'
         }).setOrigin(0.5);
 
         this.input.once('pointerdown', () => {
+            this.scene.start('Game');
+        });
 
-            this.scene.start('MainMenu');
-
+        this.input.keyboard.once('keydown-SPACE', () => {
+            this.scene.start('Game');
         });
     }
 }
