@@ -1,35 +1,33 @@
-import { Math as PhaserMath, Scene } from 'phaser';
+import { Scene } from 'phaser';
 import { ASSETS } from '../../config/assetManifest';
 import {
     BASE_SPEED,
-    CRATER_DEPTH,
-    CRATER_W,
-    DEBUG_FAIRNESS,
-    FAIRNESS_WINDOW_MS,
-    GROUND_MIN_GAP_PX,
-    GRAVITY_Y,
+    BG_CRATERS_HEIGHT,
+    BG_CRATERS_SPEED,
+    BG_CRATERS_Y,
+    BG_SKY_HEIGHT,
+    BG_STARS_HEIGHT,
+    BG_STARS_SPEED,
+    BG_STARS_Y,
+    BG_SURFACE_HEIGHT,
+    BG_SURFACE_SPEED,
+    BG_SURFACE_Y,
+    DEPTHS,
     GROUND_THICKNESS,
     GROUND_Y,
     HEIGHT,
-    JUMP_VELOCITY,
-    METEOR_LANE_HIGH_Y,
-    METEOR_LANE_LOW_Y,
-    METEOR,
-    UNFAIR_OVERLAP_PX,
-    AIR_MIN_GAP_MS,
-    PLAYER_H,
-    PLAYER_W,
+    METEOR_COOLDOWN_SEGMENTS,
     PLAYER_X,
     PLAYER_Y,
-    ROCK_BIG_H,
-    ROCK_BIG_W,
-    ROCK_SMALL_H,
-    ROCK_SMALL_W,
-    SPAWN_FLY_MS,
-    SPAWN_GROUND_MS,
+    SEGMENT_WIDTH,
     SPEED_RAMP,
     WIDTH
 } from '../../config/gameConfig';
+import { Player } from '../objects/Player';
+import { Difficulty } from '../systems/Difficulty';
+import { FairSpawn } from '../systems/FairSpawn';
+import { ObstacleManager } from '../systems/ObstacleManager';
+import { setHighScoreIfHigher } from '../systems/Storage';
 
 export class RunnerScene extends Scene
 {
@@ -37,55 +35,30 @@ export class RunnerScene extends Scene
     {
         super('RunnerScene');
         this.player = null;
-        this.playerSprite = null;
         this.ground = null;
-        this.groundObstacles = null;
-        this.flyingObstacles = null;
+        this.obstacleManager = null;
+        this.backgroundLayers = null;
+        this.scrollX = 0;
+        this.difficulty = null;
+        this.fairSpawn = null;
         this.currentSpeed = BASE_SPEED;
         this.score = 0;
         this.scoreText = null;
-        this.hintText = null;
-        this.startText = null;
-        this.groundTimer = null;
-        this.flyTimer = null;
         this.isGameOver = false;
-        this.isRestarting = false;
-        this.hasJumped = false;
-        this.hasStarted = false;
-        this.playerState = 'run';
-        this.craters = [];
-        this.missingTextures = new Set();
-        this.timedEvents = [];
-        this.lastGroundSpawnTime = 0;
-        this.lastAirSpawnTime = 0;
-        this.forceLowMeteorUntil = 0;
+        this.isEnding = false;
+        this.elapsedSeconds = 0;
+        this.segmentProgress = 0;
+        this.spawnWindow = 600;
+        this.timeSinceSpawn = 0;
     }
 
     preload ()
     {
-        this.missingTextures.clear();
-        this.load.on('loaderror', (file) => {
-            if (file?.key)
-            {
-                this.missingTextures.add(file.key);
-            }
-        });
-
         this.load.image('bg-sky', ASSETS.background.sky);
-        this.load.image('bg-stars', ASSETS.background.stars);
-        this.load.image('bg-moon', ASSETS.background.moonSurface);
-        this.load.image('player-run', ASSETS.player.vaderRun);
-        this.load.image('player-jump', ASSETS.player.vaderJump);
-        this.load.image('player-hurt', ASSETS.player.vaderHurt);
+        this.load.image('bg-stars', ASSETS.background.starsStrip);
+        this.load.image('bg-craters', ASSETS.background.cratersStrip);
+        this.load.image('bg-surface', ASSETS.background.moonSurface);
         this.load.image('obstacle-crater', ASSETS.obstacles.crater);
-        this.load.image('obstacle-rock-small', ASSETS.obstacles.rockSmall);
-        this.load.image('obstacle-rock-big', ASSETS.obstacles.rockBig);
-        this.load.image('obstacle-meteor', ASSETS.obstacles.meteor);
-    }
-
-    hasTexture (key)
-    {
-        return this.textures.exists(key) && !this.missingTextures.has(key);
     }
 
     create ()
@@ -93,93 +66,49 @@ export class RunnerScene extends Scene
         this.currentSpeed = BASE_SPEED;
         this.score = 0;
         this.isGameOver = false;
-        this.isRestarting = false;
-        this.hasJumped = false;
-        this.hasStarted = false;
-        this.playerState = 'run';
-        this.craters = [];
-        this.timedEvents = [];
-        this.lastGroundSpawnTime = 0;
-        this.lastAirSpawnTime = 0;
-        this.forceLowMeteorUntil = 0;
+        this.isEnding = false;
+        this.elapsedSeconds = 0;
+        this.segmentProgress = 0;
+        this.startTime = this.time.now;
 
         this.cameras.main.setBackgroundColor('#0f0f0f');
         this.physics.world.setBounds(0, 0, WIDTH, HEIGHT);
 
-        if (this.hasTexture('bg-sky'))
-        {
-            this.add.image(0, 0, 'bg-sky').setOrigin(0, 0).setDisplaySize(WIDTH, HEIGHT);
-        }
+        this.backgroundLayers = this.createBackgroundLayers();
 
-        if (this.hasTexture('bg-stars'))
-        {
-            this.add.image(0, 0, 'bg-stars').setOrigin(0, 0).setAlpha(0.6).setDisplaySize(WIDTH, HEIGHT);
-        }
-
-        if (this.hasTexture('bg-moon'))
-        {
-            this.add.image(0, GROUND_Y + GROUND_THICKNESS / 2, 'bg-moon').setOrigin(0, 0.5).setDisplaySize(WIDTH, GROUND_THICKNESS);
-        }
-
-        this.ground = this.add.rectangle(WIDTH / 2, GROUND_Y + GROUND_THICKNESS / 2, WIDTH, GROUND_THICKNESS, 0x2b2b2b);
+        this.ground = this.add.rectangle(WIDTH / 2, GROUND_Y + GROUND_THICKNESS / 2, WIDTH, GROUND_THICKNESS, 0x2b2b2b)
+            .setDepth(DEPTHS.GROUND);
         this.physics.add.existing(this.ground, true);
 
-        if (this.hasTexture('player-run'))
-        {
-            this.player = this.physics.add.sprite(PLAYER_X, PLAYER_Y, 'player-run');
-            this.player.setDisplaySize(PLAYER_W, PLAYER_H);
-            this.playerSprite = this.player;
-        }
-        else
-        {
-            this.player = this.add.rectangle(PLAYER_X, PLAYER_Y, PLAYER_W, PLAYER_H, 0x4fd1c5);
-            this.physics.add.existing(this.player);
-        }
-        this.player.body.setCollideWorldBounds(true);
-        this.player.body.setGravityY(GRAVITY_Y);
-        this.player.body.setSize(PLAYER_W, PLAYER_H, true);
+        this.player = new Player(this, PLAYER_X, PLAYER_Y);
+        this.physics.add.collider(this.player.sprite, this.ground);
 
-        this.physics.add.collider(this.player, this.ground);
-
-        this.groundObstacles = this.physics.add.group({ allowGravity: false, immovable: true });
-        this.flyingObstacles = this.physics.add.group({ allowGravity: false, immovable: true });
-
-        this.physics.add.collider(this.player, this.groundObstacles, () => this.handleGameOver());
-        this.physics.add.collider(this.player, this.flyingObstacles, () => this.handleGameOver());
+        this.obstacleManager = new ObstacleManager(this);
+        const groups = this.obstacleManager.getGroups();
+        this.physics.add.collider(this.player.sprite, groups.ground, () => this.handleGameOver());
+        this.physics.add.collider(this.player.sprite, groups.air, () => this.handleGameOver());
 
         this.scoreText = this.add.text(24, 24, 'Score: 0', {
             fontFamily: 'Arial Black',
             fontSize: 32,
             color: '#ffffff'
-        }).setScrollFactor(0);
+        }).setScrollFactor(0).setDepth(DEPTHS.UI);
 
-        this.startText = this.add.text(WIDTH / 2, HEIGHT * 0.28, 'Left click to start', {
-            fontFamily: 'Arial',
-            fontSize: 28,
-            color: '#dddddd',
-            align: 'center'
-        }).setOrigin(0.5);
-
-        this.hintText = this.add.text(WIDTH / 2, HEIGHT * 0.35, 'Space — jump', {
-            fontFamily: 'Arial',
-            fontSize: 28,
-            color: '#dddddd',
-            align: 'center'
-        }).setOrigin(0.5);
-
-        this.groundTimer = this.time.addEvent({
-            delay: SPAWN_GROUND_MS,
-            loop: true,
-            callback: () => this.spawnGroundObstacle()
+        this.difficulty = new Difficulty({
+            baseSpeed: BASE_SPEED,
+            maxSpeed: 900,
+            speedRamp: SPEED_RAMP,
+            spawnIntervalStart: 1100,
+            spawnIntervalMin: 600,
+            spawnIntervalRamp: 25
         });
-        this.timedEvents.push(this.groundTimer);
 
-        this.flyTimer = this.time.addEvent({
-            delay: SPAWN_FLY_MS,
-            loop: true,
-            callback: () => this.spawnFlyingObstacle()
+        this.fairSpawn = new FairSpawn({
+            segmentWidth: SEGMENT_WIDTH,
+            spawnWindow: this.spawnWindow,
+            meteorCooldownSegments: METEOR_COOLDOWN_SEGMENTS,
+            maxAttempts: 6
         });
-        this.timedEvents.push(this.flyTimer);
 
         const jump = () => this.handleJump();
 
@@ -194,151 +123,175 @@ export class RunnerScene extends Scene
             return;
         }
 
-        if (this.player.body.blocked.down)
+        this.player.jump();
+    }
+
+    createBackgroundLayers ()
+    {
+        const layers = {};
+
+        if (this.textures.exists('bg-sky'))
         {
-            this.player.body.setVelocityY(JUMP_VELOCITY);
-            this.setPlayerState('jump');
-            if (!this.hasStarted)
-            {
-                this.hasStarted = true;
-                this.startText.setVisible(false);
+            layers.sky = this.add.image(0, 0, 'bg-sky')
+                .setOrigin(0, 0)
+                .setDisplaySize(WIDTH, BG_SKY_HEIGHT)
+                .setDepth(DEPTHS.SKY);
+        }
+        else
+        {
+            const top = this.add.rectangle(WIDTH / 2, BG_SKY_HEIGHT * 0.25, WIDTH, BG_SKY_HEIGHT * 0.5, 0x0b0f1f)
+                .setDepth(DEPTHS.SKY);
+            const bottom = this.add.rectangle(WIDTH / 2, BG_SKY_HEIGHT * 0.75, WIDTH, BG_SKY_HEIGHT * 0.5, 0x141b2d)
+                .setDepth(DEPTHS.SKY);
+            layers.sky = [top, bottom];
+        }
+
+        layers.stars = this.createStripLayer({
+            key: 'bg-stars',
+            fallbackKey: 'bg-stars-fallback',
+            width: WIDTH,
+            height: BG_STARS_HEIGHT,
+            y: BG_STARS_Y,
+            depth: DEPTHS.STARS,
+            draw: (context, width, height) => {
+                context.fillStyle = '#0b0f1f';
+                context.fillRect(0, 0, width, height);
+                for (let i = 0; i < 12; i += 1)
+                {
+                    const x = (width / 12) * i + 8;
+                    const y = 20 + (i % 4) * 18;
+                    const radius = 2 + (i % 3);
+                    context.fillStyle = '#ffffff';
+                    context.beginPath();
+                    context.arc(x, y, radius, 0, Math.PI * 2);
+                    context.fill();
+                }
             }
-            if (!this.hasJumped)
-            {
-                this.hasJumped = true;
-                this.hintText.setVisible(false);
-            }
-        }
-    }
-
-    spawnGroundObstacle ()
-    {
-        if (this.isGameOver)
-        {
-            return;
-        }
-
-        const now = this.time.now;
-        const minGapMs = (GROUND_MIN_GAP_PX / this.currentSpeed) * 1000;
-        if (now - this.lastGroundSpawnTime < minGapMs)
-        {
-            this.logFairness('Skip ground spawn due to minimum gap.');
-            return;
-        }
-
-        const roll = PhaserMath.Between(0, 2);
-        if (roll === 0)
-        {
-            this.spawnCrater();
-            this.lastGroundSpawnTime = now;
-            this.forceLowMeteorUntil = Math.max(this.forceLowMeteorUntil, now + FAIRNESS_WINDOW_MS);
-            return;
-        }
-
-        const obstacleType = roll === 1 ? 'ROCK_SMALL' : 'ROCK_BIG';
-        const width = obstacleType === 'ROCK_SMALL' ? ROCK_SMALL_W : ROCK_BIG_W;
-        const height = obstacleType === 'ROCK_SMALL' ? ROCK_SMALL_H : ROCK_BIG_H;
-        const x = WIDTH + width;
-        const y = GROUND_Y - height / 2;
-        const textureKey = obstacleType === 'ROCK_SMALL' ? 'obstacle-rock-small' : 'obstacle-rock-big';
-        let obstacle;
-
-        if (this.hasTexture(textureKey))
-        {
-            obstacle = this.physics.add.sprite(x, y, textureKey);
-            obstacle.setDisplaySize(width, height);
-        }
-        else
-        {
-            obstacle = this.add.rectangle(x, y, width, height, 0xff7a7a);
-            this.physics.add.existing(obstacle);
-        }
-
-        obstacle.body.setAllowGravity(false);
-        obstacle.body.setImmovable(true);
-        obstacle.body.setVelocityX(-this.currentSpeed);
-        obstacle.body.setSize(width, height, true);
-        obstacle.setData('type', obstacleType);
-        obstacle.setData('requiresJump', true);
-
-        this.groundObstacles.add(obstacle);
-        this.lastGroundSpawnTime = now;
-        this.forceLowMeteorUntil = Math.max(this.forceLowMeteorUntil, now + FAIRNESS_WINDOW_MS);
-    }
-
-    spawnFlyingObstacle ()
-    {
-        if (this.isGameOver)
-        {
-            return;
-        }
-
-        const now = this.time.now;
-        if (now - this.lastAirSpawnTime < AIR_MIN_GAP_MS)
-        {
-            this.logFairness('Skip air spawn due to minimum gap.');
-            return;
-        }
-
-        const x = WIDTH + METEOR.W;
-        let y = METEOR.yLevels[PhaserMath.Between(0, METEOR.yLevels.length - 1)];
-        const forceLow = this.shouldForceLowMeteorite(x);
-        if (forceLow)
-        {
-            y = METEOR_LANE_LOW_Y;
-            this.logFairness('Force low meteorite due to fairness window.');
-        }
-        else if (y === METEOR_LANE_HIGH_Y && this.hasGroundOverlap(x))
-        {
-            y = METEOR_LANE_LOW_Y;
-            this.logFairness('Avoided high meteorite due to ground overlap.');
-        }
-        let obstacle;
-
-        if (this.hasTexture('obstacle-meteor'))
-        {
-            obstacle = this.physics.add.sprite(x, y, 'obstacle-meteor');
-            obstacle.setDisplaySize(METEOR.W, METEOR.H);
-        }
-        else
-        {
-            obstacle = this.add.rectangle(x, y, METEOR.W, METEOR.H, 0xffc857);
-            this.physics.add.existing(obstacle);
-        }
-
-        obstacle.body.setAllowGravity(false);
-        obstacle.body.setImmovable(true);
-        obstacle.body.setVelocityX(-this.currentSpeed * 0.9);
-        obstacle.body.setSize(METEOR.W, METEOR.H, true);
-        obstacle.setData('type', 'METEOR');
-
-        this.flyingObstacles.add(obstacle);
-        this.lastAirSpawnTime = now;
-    }
-
-    spawnCrater ()
-    {
-        const x = WIDTH + CRATER_W;
-        const y = GROUND_Y + CRATER_DEPTH / 2;
-        let crater;
-
-        if (this.hasTexture('obstacle-crater'))
-        {
-            crater = this.add.image(x, y, 'obstacle-crater');
-            crater.setDisplaySize(CRATER_W, CRATER_DEPTH);
-        }
-        else
-        {
-            crater = this.add.rectangle(x, y, CRATER_W, CRATER_DEPTH, 0x151515);
-        }
-        crater.setData('type', 'CRATER');
-        crater.setData('requiresJump', true);
-        this.craters.push({
-            sprite: crater,
-            xStart: x - CRATER_W / 2,
-            xEnd: x + CRATER_W / 2,
-            requiresJump: true
         });
+
+        layers.craters = this.createStripLayer({
+            key: 'bg-craters',
+            fallbackKey: 'bg-craters-fallback',
+            width: WIDTH,
+            height: BG_CRATERS_HEIGHT,
+            y: BG_CRATERS_Y,
+            depth: DEPTHS.CRATERS,
+            draw: (context, width, height) => {
+                context.fillStyle = '#141b2d';
+                context.fillRect(0, 0, width, height);
+                context.fillStyle = '#0f1524';
+                for (let i = 0; i < 4; i += 1)
+                {
+                    const craterX = 80 + i * 140;
+                    const craterY = height;
+                    context.beginPath();
+                    context.ellipse(craterX, craterY, 60, 25, 0, Math.PI, 0);
+                    context.fill();
+                }
+            }
+        });
+
+        layers.surface = this.createStripLayer({
+            key: 'bg-surface',
+            fallbackKey: 'bg-surface-fallback',
+            width: WIDTH,
+            height: BG_SURFACE_HEIGHT,
+            y: BG_SURFACE_Y,
+            depth: DEPTHS.SURFACE,
+            draw: (context, width, height) => {
+                context.fillStyle = '#2a2a2a';
+                context.fillRect(0, 0, width, height);
+                context.fillStyle = '#1c1c1c';
+                for (let i = 0; i < 6; i += 1)
+                {
+                    const dotX = 50 + i * 80;
+                    const dotY = 30 + (i % 3) * 20;
+                    context.beginPath();
+                    context.arc(dotX, dotY, 6 + (i % 2) * 2, 0, Math.PI * 2);
+                    context.fill();
+                }
+            }
+        });
+
+        return layers;
+    }
+
+    createStripLayer ({ key, fallbackKey, width, height, y, depth, draw })
+    {
+        const textureKey = this.ensureStripTexture(key, fallbackKey, width, height, draw);
+        return this.add.tileSprite(0, y, width, height, textureKey)
+            .setOrigin(0, 0)
+            .setDepth(depth);
+    }
+
+    ensureStripTexture (key, fallbackKey, width, height, draw)
+    {
+        if (this.textures.exists(key))
+        {
+            return key;
+        }
+
+        if (!this.textures.exists(fallbackKey))
+        {
+            const canvasTexture = this.textures.createCanvas(fallbackKey, width, height);
+            const context = canvasTexture.getContext();
+            draw(context, width, height);
+            canvasTexture.refresh();
+        }
+
+        return fallbackKey;
+    }
+
+    updateBackgroundLayers ()
+    {
+        if (!this.backgroundLayers)
+        {
+            return;
+        }
+
+        if (this.backgroundLayers.stars)
+        {
+            this.backgroundLayers.stars.tilePositionX = this.scrollX * BG_STARS_SPEED;
+        }
+        if (this.backgroundLayers.craters)
+        {
+            this.backgroundLayers.craters.tilePositionX = this.scrollX * BG_CRATERS_SPEED;
+        }
+        if (this.backgroundLayers.surface)
+        {
+            this.backgroundLayers.surface.tilePositionX = this.scrollX * BG_SURFACE_SPEED;
+        }
+    }
+
+    spawnSegment ()
+    {
+        const spawnX = WIDTH + 60;
+        const pattern = this.fairSpawn.nextPattern(this.elapsedSeconds, () => this.canPlaceMeteor());
+
+        if (pattern.ground === 'ROCK_SMALL')
+        {
+            this.obstacleManager.spawnRock('ROCK_SMALL', spawnX);
+        }
+        else if (pattern.ground === 'ROCK_BIG')
+        {
+            this.obstacleManager.spawnRock('ROCK_BIG', spawnX);
+        }
+        else if (pattern.ground === 'CRATER')
+        {
+            this.obstacleManager.spawnCrater(spawnX);
+        }
+
+        if (pattern.meteor !== 'NONE')
+        {
+            this.obstacleManager.spawnMeteor(pattern.meteor, spawnX);
+        }
+    }
+
+    canPlaceMeteor ()
+    {
+        const groups = this.obstacleManager.getGroups();
+        const playerX = this.player.x;
+        return groups.air.getChildren().every((meteor) => meteor.x < playerX || meteor.x > playerX + this.spawnWindow);
     }
 
     handleGameOver ()
@@ -348,36 +301,14 @@ export class RunnerScene extends Scene
             return;
         }
 
-        this.setPlayerState('hurt');
         this.isGameOver = true;
-        this.stopSpawners();
         this.player.body.setVelocity(0, 0);
         this.player.body.setAllowGravity(false);
-        this.groundObstacles.getChildren().forEach((obstacle) => {
-            obstacle.body.setVelocityX(0);
+        this.score = Math.floor(this.score);
+        setHighScoreIfHigher(this.score);
+        this.time.delayedCall(100, () => {
+            this.scene.start('GameOver', { score: this.score });
         });
-        this.flyingObstacles.getChildren().forEach((obstacle) => {
-            obstacle.body.setVelocityX(0);
-        });
-
-        this.add.rectangle(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT, 0x000000, 0.5);
-        this.add.text(WIDTH / 2, HEIGHT * 0.45, 'Game Over', {
-            fontFamily: 'Arial Black',
-            fontSize: 56,
-            color: '#ffffff',
-            align: 'center'
-        }).setOrigin(0.5);
-
-        this.add.text(WIDTH / 2, HEIGHT * 0.55, 'Press R to restart', {
-            fontFamily: 'Arial',
-            fontSize: 28,
-            color: '#dddddd',
-            align: 'center'
-        }).setOrigin(0.5);
-
-        const restart = () => this.restartGame();
-        this.input.once('pointerdown', restart);
-        this.input.keyboard.once('keydown-R', restart);
     }
 
     update (_, delta)
@@ -387,159 +318,39 @@ export class RunnerScene extends Scene
             return;
         }
 
-        this.currentSpeed += SPEED_RAMP * (delta / 1000);
+        this.elapsedSeconds = (this.time.now - this.startTime) / 1000;
+        this.currentSpeed = this.difficulty.getSpeed(this.elapsedSeconds);
         this.score += (delta / 1000) * (this.currentSpeed / 100);
         this.scoreText.setText(`Score: ${Math.floor(this.score)}`);
-        if (this.player.body.blocked.down)
+
+        this.scrollX += this.currentSpeed * (delta / 1000);
+        this.updateBackgroundLayers();
+
+        this.segmentProgress += (this.currentSpeed * delta) / 1000;
+        this.timeSinceSpawn += delta;
+        while (this.segmentProgress >= SEGMENT_WIDTH)
         {
-            this.setPlayerState('run');
+            const interval = this.difficulty.getSpawnInterval(this.elapsedSeconds);
+            if (this.timeSinceSpawn < interval)
+            {
+                break;
+            }
+            this.segmentProgress -= SEGMENT_WIDTH;
+            this.timeSinceSpawn = 0;
+            this.spawnSegment();
         }
 
-        this.groundObstacles.getChildren().forEach((obstacle) => {
-            obstacle.body.setVelocityX(-this.currentSpeed);
-            if (obstacle.x < -obstacle.width)
-            {
-                obstacle.destroy();
-            }
-        });
-
-        this.flyingObstacles.getChildren().forEach((obstacle) => {
-            obstacle.body.setVelocityX(-this.currentSpeed * 0.9);
-            if (obstacle.x < -obstacle.width)
-            {
-                obstacle.destroy();
-            }
-        });
-
-        this.craters = this.craters.filter((craterData) => {
-            craterData.sprite.x -= (this.currentSpeed * delta) / 1000;
-            craterData.xStart = craterData.sprite.x - CRATER_W / 2;
-            craterData.xEnd = craterData.sprite.x + CRATER_W / 2;
-            if (craterData.sprite.x < -CRATER_W)
-            {
-                craterData.sprite.destroy();
-                return false;
-            }
-            return true;
-        });
+        this.obstacleManager.update(this.currentSpeed, delta / 1000);
 
         if (this.player.body.blocked.down)
         {
             const playerX = this.player.x;
-            const inCrater = this.craters.some((craterData) => playerX >= craterData.xStart && playerX <= craterData.xEnd);
-            if (inCrater)
+            const inCrater = this.obstacleManager.craters.some((craterData) => playerX >= craterData.xStart && playerX <= craterData.xEnd);
+            if (inCrater && !this.isEnding)
             {
-                this.setPlayerState('hurt');
-                this.handleGameOver();
+                this.isEnding = true;
+                this.player.fallIntoCrater(() => this.handleGameOver());
             }
-        }
-    }
-
-    stopSpawners ()
-    {
-        this.timedEvents.forEach((event) => event.remove(false));
-        this.timedEvents = [];
-        this.groundTimer = null;
-        this.flyTimer = null;
-    }
-
-    restartGame ()
-    {
-        if (this.isRestarting)
-        {
-            return;
-        }
-
-        this.isRestarting = true;
-        this.stopSpawners();
-
-        this.groundObstacles?.clear(true, true);
-        this.flyingObstacles?.clear(true, true);
-        this.craters.forEach((craterData) => craterData.sprite.destroy());
-        this.craters = [];
-
-        this.scene.restart();
-    }
-
-    shouldForceLowMeteorite (spawnX)
-    {
-        if (this.time.now < this.forceLowMeteorUntil)
-        {
-            return true;
-        }
-
-        return this.hasGroundOverlap(spawnX);
-    }
-
-    hasGroundOverlap (spawnX)
-    {
-        const overlapDistance = UNFAIR_OVERLAP_PX;
-        const playerX = this.player?.x ?? PLAYER_X;
-        const groundOverlap = this.groundObstacles.getChildren().some((obstacle) => {
-            if (!obstacle.active || !obstacle.getData('requiresJump'))
-            {
-                return false;
-            }
-            if (obstacle.x < playerX)
-            {
-                return false;
-            }
-            return Math.abs(spawnX - obstacle.x) <= overlapDistance;
-        });
-
-        if (groundOverlap)
-        {
-            return true;
-        }
-
-        return this.craters.some((craterData) => {
-            if (!craterData.requiresJump)
-            {
-                return false;
-            }
-            if (craterData.sprite.x < playerX)
-            {
-                return false;
-            }
-            return Math.abs(spawnX - craterData.sprite.x) <= overlapDistance;
-        });
-    }
-
-    logFairness (message)
-    {
-        if (!DEBUG_FAIRNESS)
-        {
-            return;
-        }
-
-        // eslint-disable-next-line no-console
-        console.debug(`[Fairness] ${message}`);
-    }
-
-    setPlayerState (state)
-    {
-        if (this.playerState === state)
-        {
-            return;
-        }
-
-        this.playerState = state;
-
-        if (!this.playerSprite)
-        {
-            return;
-        }
-
-        const textureMap = {
-            run: 'player-run',
-            jump: 'player-jump',
-            hurt: 'player-hurt'
-        };
-        const nextTexture = textureMap[state];
-        if (nextTexture && this.hasTexture(nextTexture))
-        {
-            this.playerSprite.setTexture(nextTexture);
-            this.playerSprite.setDisplaySize(PLAYER_W, PLAYER_H);
         }
     }
 }
