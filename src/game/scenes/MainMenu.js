@@ -9,20 +9,30 @@ export class MainMenu extends Scene
 
     create ()
     {
-        this.add.image(512, 384, 'background');
+        const { width, height } = this.scale;
 
-        this.add.image(512, 300, 'logo');
+        this.cameras.main.setBackgroundColor('#101010');
 
-        this.add.text(512, 460, 'Main Menu', {
-            fontFamily: 'Arial Black', fontSize: 38, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 8,
+        this.add.text(width * 0.5, height * 0.35, 'Вертикальный раннер', {
+            fontFamily: 'Arial Black',
+            fontSize: 48,
+            color: '#ffffff',
+            align: 'center'
+        }).setOrigin(0.5);
+
+        this.add.text(width * 0.5, height * 0.55, 'Клик/тап, чтобы начать', {
+            fontFamily: 'Arial',
+            fontSize: 32,
+            color: '#dddddd',
             align: 'center'
         }).setOrigin(0.5);
 
         this.input.once('pointerdown', () => {
-
             this.scene.start('Game');
+        });
 
+        this.input.keyboard.once('keydown-SPACE', () => {
+            this.scene.start('Game');
         });
     }
 }
