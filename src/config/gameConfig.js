@@ -21,6 +21,30 @@ export const DEBUG_FAIRNESS = false;
 export const GROUND_THICKNESS = 80;
 export const GROUND_Y = 820;
 
+export const BG_SKY_HEIGHT = HEIGHT;
+export const BG_STARS_HEIGHT = 140;
+export const BG_STARS_Y = 80;
+export const BG_CRATERS_HEIGHT = 160;
+export const BG_CRATERS_Y = 520;
+export const BG_SURFACE_HEIGHT = 180;
+export const BG_SURFACE_Y = GROUND_Y - 120;
+
+export const BG_STARS_SPEED = 0.1;
+export const BG_CRATERS_SPEED = 0.25;
+export const BG_SURFACE_SPEED = 0.7;
+
+export const DEPTHS = {
+    SKY: 0,
+    STARS: 1,
+    CRATERS: 2,
+    SURFACE: 3,
+    GROUND: 4,
+    CRATER: 5,
+    OBSTACLE: 6,
+    PLAYER: 7,
+    UI: 10
+};
+
 export const PLAYER_W = 64;
 export const PLAYER_H = 96;
 export const PLAYER_X = 120;

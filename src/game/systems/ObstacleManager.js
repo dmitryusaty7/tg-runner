@@ -1,6 +1,7 @@
 import {
     CRATER_DEPTH,
     CRATER_W,
+    DEPTHS,
     GROUND_Y,
     METEOR,
     METEOR_LANE_HIGH_Y,
@@ -53,6 +54,7 @@ export class ObstacleManager
 
         obstacle.setPosition(x, y);
         obstacle.setActive(true).setVisible(true);
+        obstacle.setDepth(DEPTHS.OBSTACLE);
         obstacle.body.enable = true;
         obstacle.body.setSize(width, height, true);
         obstacle.setData('type', type);
@@ -79,6 +81,7 @@ export class ObstacleManager
 
         obstacle.setPosition(x, y);
         obstacle.setActive(true).setVisible(true);
+        obstacle.setDepth(DEPTHS.OBSTACLE);
         obstacle.body.enable = true;
         obstacle.body.setSize(METEOR.W, METEOR.H, true);
         obstacle.setData('type', 'METEOR');
@@ -89,10 +92,11 @@ export class ObstacleManager
 
     spawnCrater (x)
     {
-        const y = GROUND_Y + CRATER_DEPTH / 2;
-        const crater = this.obtainFromPool('crater', () => this.scene.add.rectangle(0, 0, CRATER_W, CRATER_DEPTH, 0x151515));
+        const y = GROUND_Y;
+        const crater = this.obtainFromPool('crater', () => this.createCraterFallback());
         crater.setPosition(x, y);
         crater.setActive(true).setVisible(true);
+        crater.setDepth(DEPTHS.CRATER);
         crater.setData('type', 'CRATER');
         crater.setData('requiresJump', true);
         this.craters.push({
@@ -102,6 +106,21 @@ export class ObstacleManager
             requiresJump: true
         });
         return crater;
+    }
+
+    createCraterFallback ()
+    {
+        if (this.scene.textures.exists('obstacle-crater'))
+        {
+            return this.scene.add.image(0, 0, 'obstacle-crater').setOrigin(0.5, 1);
+        }
+
+        const graphics = this.scene.add.graphics();
+        graphics.fillStyle(0x0b0b0b, 1);
+        graphics.fillEllipse(0, -CRATER_DEPTH / 2, CRATER_W, CRATER_DEPTH);
+        graphics.lineStyle(3, 0x2a2a2a, 1);
+        graphics.strokeEllipse(0, -CRATER_DEPTH / 2, CRATER_W * 0.98, CRATER_DEPTH * 0.95);
+        return graphics;
     }
 
     update (speed, deltaSeconds)

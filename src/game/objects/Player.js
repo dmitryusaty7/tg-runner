@@ -1,4 +1,4 @@
-import { GRAVITY_Y, JUMP_VELOCITY, PLAYER_H, PLAYER_W } from '../../config/gameConfig';
+import { DEPTHS, GRAVITY_Y, JUMP_VELOCITY, PLAYER_H, PLAYER_W } from '../../config/gameConfig';
 
 export class Player
 {
@@ -10,6 +10,7 @@ export class Player
 
         this.sprite = scene.add.rectangle(x, y, PLAYER_W, PLAYER_H, 0x4fd1c5);
         scene.physics.add.existing(this.sprite);
+        this.sprite.setDepth(DEPTHS.PLAYER);
         this.sprite.body.setCollideWorldBounds(true);
         this.sprite.body.setGravityY(GRAVITY_Y);
         this.sprite.body.setSize(PLAYER_W, PLAYER_H, true);

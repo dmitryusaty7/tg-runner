@@ -2,6 +2,17 @@ import { Scene } from 'phaser';
 import { ASSETS } from '../../config/assetManifest';
 import {
     BASE_SPEED,
+    BG_CRATERS_HEIGHT,
+    BG_CRATERS_SPEED,
+    BG_CRATERS_Y,
+    BG_SKY_HEIGHT,
+    BG_STARS_HEIGHT,
+    BG_STARS_SPEED,
+    BG_STARS_Y,
+    BG_SURFACE_HEIGHT,
+    BG_SURFACE_SPEED,
+    BG_SURFACE_Y,
+    DEPTHS,
     GROUND_THICKNESS,
     GROUND_Y,
     HEIGHT,
@@ -16,7 +27,6 @@ import { Player } from '../objects/Player';
 import { Difficulty } from '../systems/Difficulty';
 import { FairSpawn } from '../systems/FairSpawn';
 import { ObstacleManager } from '../systems/ObstacleManager';
-import { Parallax } from '../systems/Parallax';
 import { setHighScoreIfHigher } from '../systems/Storage';
 
 export class RunnerScene extends Scene
@@ -27,7 +37,8 @@ export class RunnerScene extends Scene
         this.player = null;
         this.ground = null;
         this.obstacleManager = null;
-        this.parallax = null;
+        this.backgroundLayers = null;
+        this.scrollX = 0;
         this.difficulty = null;
         this.fairSpawn = null;
         this.currentSpeed = BASE_SPEED;
@@ -44,8 +55,10 @@ export class RunnerScene extends Scene
     preload ()
     {
         this.load.image('bg-sky', ASSETS.background.sky);
-        this.load.image('bg-far-craters', ASSETS.background.farCraters);
-        this.load.image('bg-ground', ASSETS.background.ground);
+        this.load.image('bg-stars', ASSETS.background.starsStrip);
+        this.load.image('bg-craters', ASSETS.background.cratersStrip);
+        this.load.image('bg-surface', ASSETS.background.moonSurface);
+        this.load.image('obstacle-crater', ASSETS.obstacles.crater);
     }
 
     create ()
@@ -61,32 +74,10 @@ export class RunnerScene extends Scene
         this.cameras.main.setBackgroundColor('#0f0f0f');
         this.physics.world.setBounds(0, 0, WIDTH, HEIGHT);
 
-        this.parallax = new Parallax(this, [
-            {
-                key: 'bg-sky',
-                color: '#0b0f1f',
-                height: HEIGHT,
-                y: 0,
-                speedFactor: 0.15
-            },
-            {
-                key: 'bg-far-craters',
-                color: '#141c2f',
-                height: HEIGHT,
-                y: 0,
-                speedFactor: 0.35,
-                alpha: 0.8
-            },
-            {
-                key: 'bg-ground',
-                color: '#1f1f1f',
-                height: GROUND_THICKNESS * 1.4,
-                y: GROUND_Y - GROUND_THICKNESS * 0.2,
-                speedFactor: 1.0
-            }
-        ]);
+        this.backgroundLayers = this.createBackgroundLayers();
 
-        this.ground = this.add.rectangle(WIDTH / 2, GROUND_Y + GROUND_THICKNESS / 2, WIDTH, GROUND_THICKNESS, 0x2b2b2b);
+        this.ground = this.add.rectangle(WIDTH / 2, GROUND_Y + GROUND_THICKNESS / 2, WIDTH, GROUND_THICKNESS, 0x2b2b2b)
+            .setDepth(DEPTHS.GROUND);
         this.physics.add.existing(this.ground, true);
 
         this.player = new Player(this, PLAYER_X, PLAYER_Y);
@@ -97,11 +88,11 @@ export class RunnerScene extends Scene
         this.physics.add.collider(this.player.sprite, groups.ground, () => this.handleGameOver());
         this.physics.add.collider(this.player.sprite, groups.air, () => this.handleGameOver());
 
-        this.scoreText = this.add.text(24, 24, 'Счёт: 0', {
+        this.scoreText = this.add.text(24, 24, 'Score: 0', {
             fontFamily: 'Arial Black',
             fontSize: 32,
             color: '#ffffff'
-        }).setScrollFactor(0).setDepth(5);
+        }).setScrollFactor(0).setDepth(DEPTHS.UI);
 
         this.difficulty = new Difficulty({
             baseSpeed: BASE_SPEED,
@@ -133,6 +124,143 @@ export class RunnerScene extends Scene
         }
 
         this.player.jump();
+    }
+
+    createBackgroundLayers ()
+    {
+        const layers = {};
+
+        if (this.textures.exists('bg-sky'))
+        {
+            layers.sky = this.add.image(0, 0, 'bg-sky')
+                .setOrigin(0, 0)
+                .setDisplaySize(WIDTH, BG_SKY_HEIGHT)
+                .setDepth(DEPTHS.SKY);
+        }
+        else
+        {
+            const top = this.add.rectangle(WIDTH / 2, BG_SKY_HEIGHT * 0.25, WIDTH, BG_SKY_HEIGHT * 0.5, 0x0b0f1f)
+                .setDepth(DEPTHS.SKY);
+            const bottom = this.add.rectangle(WIDTH / 2, BG_SKY_HEIGHT * 0.75, WIDTH, BG_SKY_HEIGHT * 0.5, 0x141b2d)
+                .setDepth(DEPTHS.SKY);
+            layers.sky = [top, bottom];
+        }
+
+        layers.stars = this.createStripLayer({
+            key: 'bg-stars',
+            fallbackKey: 'bg-stars-fallback',
+            width: WIDTH,
+            height: BG_STARS_HEIGHT,
+            y: BG_STARS_Y,
+            depth: DEPTHS.STARS,
+            draw: (context, width, height) => {
+                context.fillStyle = '#0b0f1f';
+                context.fillRect(0, 0, width, height);
+                for (let i = 0; i < 12; i += 1)
+                {
+                    const x = (width / 12) * i + 8;
+                    const y = 20 + (i % 4) * 18;
+                    const radius = 2 + (i % 3);
+                    context.fillStyle = '#ffffff';
+                    context.beginPath();
+                    context.arc(x, y, radius, 0, Math.PI * 2);
+                    context.fill();
+                }
+            }
+        });
+
+        layers.craters = this.createStripLayer({
+            key: 'bg-craters',
+            fallbackKey: 'bg-craters-fallback',
+            width: WIDTH,
+            height: BG_CRATERS_HEIGHT,
+            y: BG_CRATERS_Y,
+            depth: DEPTHS.CRATERS,
+            draw: (context, width, height) => {
+                context.fillStyle = '#141b2d';
+                context.fillRect(0, 0, width, height);
+                context.fillStyle = '#0f1524';
+                for (let i = 0; i < 4; i += 1)
+                {
+                    const craterX = 80 + i * 140;
+                    const craterY = height;
+                    context.beginPath();
+                    context.ellipse(craterX, craterY, 60, 25, 0, Math.PI, 0);
+                    context.fill();
+                }
+            }
+        });
+
+        layers.surface = this.createStripLayer({
+            key: 'bg-surface',
+            fallbackKey: 'bg-surface-fallback',
+            width: WIDTH,
+            height: BG_SURFACE_HEIGHT,
+            y: BG_SURFACE_Y,
+            depth: DEPTHS.SURFACE,
+            draw: (context, width, height) => {
+                context.fillStyle = '#2a2a2a';
+                context.fillRect(0, 0, width, height);
+                context.fillStyle = '#1c1c1c';
+                for (let i = 0; i < 6; i += 1)
+                {
+                    const dotX = 50 + i * 80;
+                    const dotY = 30 + (i % 3) * 20;
+                    context.beginPath();
+                    context.arc(dotX, dotY, 6 + (i % 2) * 2, 0, Math.PI * 2);
+                    context.fill();
+                }
+            }
+        });
+
+        return layers;
+    }
+
+    createStripLayer ({ key, fallbackKey, width, height, y, depth, draw })
+    {
+        const textureKey = this.ensureStripTexture(key, fallbackKey, width, height, draw);
+        return this.add.tileSprite(0, y, width, height, textureKey)
+            .setOrigin(0, 0)
+            .setDepth(depth);
+    }
+
+    ensureStripTexture (key, fallbackKey, width, height, draw)
+    {
+        if (this.textures.exists(key))
+        {
+            return key;
+        }
+
+        if (!this.textures.exists(fallbackKey))
+        {
+            const canvasTexture = this.textures.createCanvas(fallbackKey, width, height);
+            const context = canvasTexture.getContext();
+            draw(context, width, height);
+            canvasTexture.refresh();
+        }
+
+        return fallbackKey;
+    }
+
+    updateBackgroundLayers ()
+    {
+        if (!this.backgroundLayers)
+        {
+            return;
+        }
+
+        if (this.backgroundLayers.stars)
+        {
+            this.backgroundLayers.stars.tilePositionX = this.scrollX * BG_STARS_SPEED;
+        }
+        if (this.backgroundLayers.craters)
+        {
+            this.backgroundLayers.craters.tilePositionX = this.scrollX * BG_CRATERS_SPEED;
+        }
+        if (this.backgroundLayers.surface)
+        {
+            this.backgroundLayers.surface.tilePositionX = this.scrollX * BG_SURFACE_SPEED;
+        }
     }
 
     spawnSegment ()
@@ -195,7 +323,8 @@ export class RunnerScene extends Scene
         this.score += (delta / 1000) * (this.currentSpeed / 100);
         this.scoreText.setText(`Score: ${Math.floor(this.score)}`);
 
-        this.parallax.update(this.currentSpeed, delta / 1000);
+        this.scrollX += this.currentSpeed * (delta / 1000);
+        this.updateBackgroundLayers();
 
         this.segmentProgress += (this.currentSpeed * delta) / 1000;
         this.timeSinceSpawn += delta;
