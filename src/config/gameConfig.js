@@ -6,9 +6,15 @@ export const SPEED_RAMP = 10;
 
 export const GRAVITY_Y = 1400;
 export const JUMP_VELOCITY = -620;
+export const JUMP_DURATION_MS = 900;
 
 export const SPAWN_GROUND_MS = 1200;
 export const SPAWN_FLY_MS = 2200;
+export const FAIRNESS_WINDOW_MS = 1000;
+export const UNFAIR_OVERLAP_PX = 220;
+export const AIR_MIN_GAP_MS = 900;
+export const GROUND_MIN_GAP_PX = 320;
+export const DEBUG_FAIRNESS = false;
 
 export const GROUND_THICKNESS = 80;
 export const GROUND_Y = 820;
@@ -26,8 +32,11 @@ export const ROCK_BIG_H = 56;
 export const CRATER_W = 120;
 export const CRATER_DEPTH = 70;
 
+export const METEOR_LANE_LOW_Y = 600;
+export const METEOR_LANE_HIGH_Y = 520;
+
 export const METEOR = {
     W: 56,
     H: 28,
-    yLevels: [520, 590, 660]
+    yLevels: [METEOR_LANE_LOW_Y, METEOR_LANE_HIGH_Y]
 };
