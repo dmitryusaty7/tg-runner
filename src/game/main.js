@@ -1,5 +1,6 @@
 import { AUTO, Game, Scale } from 'phaser';
 import { HEIGHT, WIDTH } from '../config/gameConfig';
+import { MainMenuScene } from './scenes/MainMenuScene';
 import { RunnerScene } from './scenes/RunnerScene';
 
 //  Find out more information about the Game Config at:
@@ -22,6 +23,7 @@ const config = {
         }
     },
     scene: [
+        MainMenuScene,
         RunnerScene
     ]
 };
