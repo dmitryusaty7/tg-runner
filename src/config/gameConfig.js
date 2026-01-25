@@ -26,6 +26,8 @@ export const ROCK_BIG_H = 56;
 export const CRATER_W = 120;
 export const CRATER_DEPTH = 70;
 
-export const METEOR_W = 56;
-export const METEOR_H = 28;
-export const METEOR_Y_LEVELS = [520, 590, 660];
+export const METEOR = {
+    W: 56,
+    H: 28,
+    yLevels: [520, 590, 660]
+};

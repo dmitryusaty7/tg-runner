@@ -1,4 +1,5 @@
 import { Math as PhaserMath, Scene } from 'phaser';
+import { ASSETS } from '../../config/assetManifest';
 import {
     BASE_SPEED,
     CRATER_DEPTH,
@@ -8,9 +9,7 @@ import {
     GROUND_Y,
     HEIGHT,
     JUMP_VELOCITY,
-    METEOR_H,
-    METEOR_W,
-    METEOR_Y_LEVELS,
+    METEOR,
     PLAYER_H,
     PLAYER_W,
     PLAYER_X,
@@ -31,6 +30,7 @@ export class RunnerScene extends Scene
     {
         super('RunnerScene');
         this.player = null;
+        this.playerSprite = null;
         this.ground = null;
         this.groundObstacles = null;
         this.flyingObstacles = null;
@@ -46,6 +46,34 @@ export class RunnerScene extends Scene
         this.hasStarted = false;
         this.playerState = 'run';
         this.craters = [];
+        this.missingTextures = new Set();
+    }
+
+    preload ()
+    {
+        this.missingTextures.clear();
+        this.load.on('loaderror', (file) => {
+            if (file?.key)
+            {
+                this.missingTextures.add(file.key);
+            }
+        });
+
+        this.load.image('bg-sky', ASSETS.background.sky);
+        this.load.image('bg-stars', ASSETS.background.stars);
+        this.load.image('bg-moon', ASSETS.background.moonSurface);
+        this.load.image('player-run', ASSETS.player.vaderRun);
+        this.load.image('player-jump', ASSETS.player.vaderJump);
+        this.load.image('player-hurt', ASSETS.player.vaderHurt);
+        this.load.image('obstacle-crater', ASSETS.obstacles.crater);
+        this.load.image('obstacle-rock-small', ASSETS.obstacles.rockSmall);
+        this.load.image('obstacle-rock-big', ASSETS.obstacles.rockBig);
+        this.load.image('obstacle-meteor', ASSETS.obstacles.meteor);
+    }
+
+    hasTexture (key)
+    {
+        return this.textures.exists(key) && !this.missingTextures.has(key);
     }
 
     create ()
@@ -53,11 +81,35 @@ export class RunnerScene extends Scene
         this.cameras.main.setBackgroundColor('#0f0f0f');
         this.physics.world.setBounds(0, 0, WIDTH, HEIGHT);
 
+        if (this.hasTexture('bg-sky'))
+        {
+            this.add.image(0, 0, 'bg-sky').setOrigin(0, 0).setDisplaySize(WIDTH, HEIGHT);
+        }
+
+        if (this.hasTexture('bg-stars'))
+        {
+            this.add.image(0, 0, 'bg-stars').setOrigin(0, 0).setAlpha(0.6).setDisplaySize(WIDTH, HEIGHT);
+        }
+
+        if (this.hasTexture('bg-moon'))
+        {
+            this.add.image(0, GROUND_Y + GROUND_THICKNESS / 2, 'bg-moon').setOrigin(0, 0.5).setDisplaySize(WIDTH, GROUND_THICKNESS);
+        }
+
         this.ground = this.add.rectangle(WIDTH / 2, GROUND_Y + GROUND_THICKNESS / 2, WIDTH, GROUND_THICKNESS, 0x2b2b2b);
         this.physics.add.existing(this.ground, true);
 
-        this.player = this.add.rectangle(PLAYER_X, PLAYER_Y, PLAYER_W, PLAYER_H, 0x4fd1c5);
-        this.physics.add.existing(this.player);
+        if (this.hasTexture('player-run'))
+        {
+            this.player = this.physics.add.sprite(PLAYER_X, PLAYER_Y, 'player-run');
+            this.player.setDisplaySize(PLAYER_W, PLAYER_H);
+            this.playerSprite = this.player;
+        }
+        else
+        {
+            this.player = this.add.rectangle(PLAYER_X, PLAYER_Y, PLAYER_W, PLAYER_H, 0x4fd1c5);
+            this.physics.add.existing(this.player);
+        }
         this.player.body.setCollideWorldBounds(true);
         this.player.body.setGravityY(GRAVITY_Y);
         this.player.body.setSize(PLAYER_W, PLAYER_H, true);
@@ -118,7 +170,7 @@ export class RunnerScene extends Scene
         if (this.player.body.blocked.down)
         {
             this.player.body.setVelocityY(JUMP_VELOCITY);
-            this.playerState = 'jump';
+            this.setPlayerState('jump');
             if (!this.hasStarted)
             {
                 this.hasStarted = true;
@@ -151,9 +203,20 @@ export class RunnerScene extends Scene
         const height = obstacleType === 'ROCK_SMALL' ? ROCK_SMALL_H : ROCK_BIG_H;
         const x = WIDTH + width;
         const y = GROUND_Y - height / 2;
-        const obstacle = this.add.rectangle(x, y, width, height, 0xff7a7a);
+        const textureKey = obstacleType === 'ROCK_SMALL' ? 'obstacle-rock-small' : 'obstacle-rock-big';
+        let obstacle;
 
-        this.physics.add.existing(obstacle);
+        if (this.hasTexture(textureKey))
+        {
+            obstacle = this.physics.add.sprite(x, y, textureKey);
+            obstacle.setDisplaySize(width, height);
+        }
+        else
+        {
+            obstacle = this.add.rectangle(x, y, width, height, 0xff7a7a);
+            this.physics.add.existing(obstacle);
+        }
+
         obstacle.body.setAllowGravity(false);
         obstacle.body.setImmovable(true);
         obstacle.body.setVelocityX(-this.currentSpeed);
@@ -170,15 +233,25 @@ export class RunnerScene extends Scene
             return;
         }
 
-        const x = WIDTH + METEOR_W;
-        const y = METEOR_Y_LEVELS[PhaserMath.Between(0, METEOR_Y_LEVELS.length - 1)];
-        const obstacle = this.add.rectangle(x, y, METEOR_W, METEOR_H, 0xffc857);
+        const x = WIDTH + METEOR.W;
+        const y = METEOR.yLevels[PhaserMath.Between(0, METEOR.yLevels.length - 1)];
+        let obstacle;
 
-        this.physics.add.existing(obstacle);
+        if (this.hasTexture('obstacle-meteor'))
+        {
+            obstacle = this.physics.add.sprite(x, y, 'obstacle-meteor');
+            obstacle.setDisplaySize(METEOR.W, METEOR.H);
+        }
+        else
+        {
+            obstacle = this.add.rectangle(x, y, METEOR.W, METEOR.H, 0xffc857);
+            this.physics.add.existing(obstacle);
+        }
+
         obstacle.body.setAllowGravity(false);
         obstacle.body.setImmovable(true);
         obstacle.body.setVelocityX(-this.currentSpeed * 0.9);
-        obstacle.body.setSize(METEOR_W, METEOR_H, true);
+        obstacle.body.setSize(METEOR.W, METEOR.H, true);
         obstacle.setData('type', 'METEOR');
 
         this.flyingObstacles.add(obstacle);
@@ -188,7 +261,17 @@ export class RunnerScene extends Scene
     {
         const x = WIDTH + CRATER_W;
         const y = GROUND_Y + CRATER_DEPTH / 2;
-        const crater = this.add.rectangle(x, y, CRATER_W, CRATER_DEPTH, 0x151515);
+        let crater;
+
+        if (this.hasTexture('obstacle-crater'))
+        {
+            crater = this.add.image(x, y, 'obstacle-crater');
+            crater.setDisplaySize(CRATER_W, CRATER_DEPTH);
+        }
+        else
+        {
+            crater = this.add.rectangle(x, y, CRATER_W, CRATER_DEPTH, 0x151515);
+        }
         crater.setData('type', 'CRATER');
         this.craters.push({ sprite: crater, xStart: x - CRATER_W / 2, xEnd: x + CRATER_W / 2 });
     }
@@ -200,6 +283,7 @@ export class RunnerScene extends Scene
             return;
         }
 
+        this.setPlayerState('hurt');
         this.isGameOver = true;
         this.physics.pause();
         this.groundTimer?.remove(false);
@@ -235,7 +319,10 @@ export class RunnerScene extends Scene
         this.currentSpeed += SPEED_RAMP * (delta / 1000);
         this.score += (delta / 1000) * (this.currentSpeed / 100);
         this.scoreText.setText(`Очки: ${Math.floor(this.score)}`);
-        this.playerState = this.player.body.blocked.down ? 'run' : 'jump';
+        if (this.player.body.blocked.down)
+        {
+            this.setPlayerState('run');
+        }
 
         this.groundObstacles.getChildren().forEach((obstacle) => {
             obstacle.body.setVelocityX(-this.currentSpeed);
@@ -271,9 +358,36 @@ export class RunnerScene extends Scene
             const inCrater = this.craters.some((craterData) => playerX >= craterData.xStart && playerX <= craterData.xEnd);
             if (inCrater)
             {
-                this.playerState = 'hurt';
+                this.setPlayerState('hurt');
                 this.handleGameOver();
             }
+        }
+    }
+
+    setPlayerState (state)
+    {
+        if (this.playerState === state)
+        {
+            return;
+        }
+
+        this.playerState = state;
+
+        if (!this.playerSprite)
+        {
+            return;
+        }
+
+        const textureMap = {
+            run: 'player-run',
+            jump: 'player-jump',
+            hurt: 'player-hurt'
+        };
+        const nextTexture = textureMap[state];
+        if (nextTexture && this.hasTexture(nextTexture))
+        {
+            this.playerSprite.setTexture(nextTexture);
+            this.playerSprite.setDisplaySize(PLAYER_W, PLAYER_H);
         }
     }
 }
