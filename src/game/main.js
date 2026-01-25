@@ -1,16 +1,13 @@
-import { Boot } from './scenes/Boot';
-import { Game as MainGame } from './scenes/Game';
-import { GameOver } from './scenes/GameOver';
-import { MainMenu } from './scenes/MainMenu';
-import { Preloader } from './scenes/Preloader';
 import { AUTO, Game, Scale } from 'phaser';
+import { HEIGHT, WIDTH } from '../config/gameConfig';
+import { RunnerScene } from './scenes/RunnerScene';
 
 //  Find out more information about the Game Config at:
 //  https://docs.phaser.io/api-documentation/typedef/types-core#gameconfig
 const config = {
     type: AUTO,
-    width: 720,
-    height: 1280,
+    width: WIDTH,
+    height: HEIGHT,
     parent: 'game-container',
     backgroundColor: '#1b1b1b',
     scale: {
@@ -25,11 +22,7 @@ const config = {
         }
     },
     scene: [
-        Boot,
-        Preloader,
-        MainMenu,
-        MainGame,
-        GameOver
+        RunnerScene
     ]
 };
 
