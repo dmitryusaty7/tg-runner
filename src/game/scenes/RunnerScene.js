@@ -97,7 +97,7 @@ export class RunnerScene extends Scene
         this.physics.add.collider(this.player.sprite, groups.ground, () => this.handleGameOver());
         this.physics.add.collider(this.player.sprite, groups.air, () => this.handleGameOver());
 
-        this.scoreText = this.add.text(24, 24, 'Score: 0', {
+        this.scoreText = this.add.text(24, 24, 'Счёт: 0', {
             fontFamily: 'Arial Black',
             fontSize: 32,
             color: '#ffffff'
