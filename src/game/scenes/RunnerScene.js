@@ -4,12 +4,19 @@ import {
     BASE_SPEED,
     CRATER_DEPTH,
     CRATER_W,
+    DEBUG_FAIRNESS,
+    FAIRNESS_WINDOW_MS,
+    GROUND_MIN_GAP_PX,
     GRAVITY_Y,
     GROUND_THICKNESS,
     GROUND_Y,
     HEIGHT,
     JUMP_VELOCITY,
+    METEOR_LANE_HIGH_Y,
+    METEOR_LANE_LOW_Y,
     METEOR,
+    UNFAIR_OVERLAP_PX,
+    AIR_MIN_GAP_MS,
     PLAYER_H,
     PLAYER_W,
     PLAYER_X,
@@ -42,11 +49,16 @@ export class RunnerScene extends Scene
         this.groundTimer = null;
         this.flyTimer = null;
         this.isGameOver = false;
+        this.isRestarting = false;
         this.hasJumped = false;
         this.hasStarted = false;
         this.playerState = 'run';
         this.craters = [];
         this.missingTextures = new Set();
+        this.timedEvents = [];
+        this.lastGroundSpawnTime = 0;
+        this.lastAirSpawnTime = 0;
+        this.forceLowMeteorUntil = 0;
     }
 
     preload ()
@@ -78,6 +90,19 @@ export class RunnerScene extends Scene
 
     create ()
     {
+        this.currentSpeed = BASE_SPEED;
+        this.score = 0;
+        this.isGameOver = false;
+        this.isRestarting = false;
+        this.hasJumped = false;
+        this.hasStarted = false;
+        this.playerState = 'run';
+        this.craters = [];
+        this.timedEvents = [];
+        this.lastGroundSpawnTime = 0;
+        this.lastAirSpawnTime = 0;
+        this.forceLowMeteorUntil = 0;
+
         this.cameras.main.setBackgroundColor('#0f0f0f');
         this.physics.world.setBounds(0, 0, WIDTH, HEIGHT);
 
@@ -122,20 +147,20 @@ export class RunnerScene extends Scene
         this.physics.add.collider(this.player, this.groundObstacles, () => this.handleGameOver());
         this.physics.add.collider(this.player, this.flyingObstacles, () => this.handleGameOver());
 
-        this.scoreText = this.add.text(24, 24, 'Очки: 0', {
+        this.scoreText = this.add.text(24, 24, 'Score: 0', {
             fontFamily: 'Arial Black',
             fontSize: 32,
             color: '#ffffff'
         }).setScrollFactor(0);
 
-        this.startText = this.add.text(WIDTH / 2, HEIGHT * 0.28, 'Нажми ЛКМ, чтобы начать', {
+        this.startText = this.add.text(WIDTH / 2, HEIGHT * 0.28, 'Left click to start', {
             fontFamily: 'Arial',
             fontSize: 28,
             color: '#dddddd',
             align: 'center'
         }).setOrigin(0.5);
 
-        this.hintText = this.add.text(WIDTH / 2, HEIGHT * 0.35, 'Пробел — прыжок', {
+        this.hintText = this.add.text(WIDTH / 2, HEIGHT * 0.35, 'Space — jump', {
             fontFamily: 'Arial',
             fontSize: 28,
             color: '#dddddd',
@@ -147,12 +172,14 @@ export class RunnerScene extends Scene
             loop: true,
             callback: () => this.spawnGroundObstacle()
         });
+        this.timedEvents.push(this.groundTimer);
 
         this.flyTimer = this.time.addEvent({
             delay: SPAWN_FLY_MS,
             loop: true,
             callback: () => this.spawnFlyingObstacle()
         });
+        this.timedEvents.push(this.flyTimer);
 
         const jump = () => this.handleJump();
 
@@ -191,10 +218,20 @@ export class RunnerScene extends Scene
             return;
         }
 
+        const now = this.time.now;
+        const minGapMs = (GROUND_MIN_GAP_PX / this.currentSpeed) * 1000;
+        if (now - this.lastGroundSpawnTime < minGapMs)
+        {
+            this.logFairness('Skip ground spawn due to minimum gap.');
+            return;
+        }
+
         const roll = PhaserMath.Between(0, 2);
         if (roll === 0)
         {
             this.spawnCrater();
+            this.lastGroundSpawnTime = now;
+            this.forceLowMeteorUntil = Math.max(this.forceLowMeteorUntil, now + FAIRNESS_WINDOW_MS);
             return;
         }
 
@@ -222,8 +259,11 @@ export class RunnerScene extends Scene
         obstacle.body.setVelocityX(-this.currentSpeed);
         obstacle.body.setSize(width, height, true);
         obstacle.setData('type', obstacleType);
+        obstacle.setData('requiresJump', true);
 
         this.groundObstacles.add(obstacle);
+        this.lastGroundSpawnTime = now;
+        this.forceLowMeteorUntil = Math.max(this.forceLowMeteorUntil, now + FAIRNESS_WINDOW_MS);
     }
 
     spawnFlyingObstacle ()
@@ -233,8 +273,26 @@ export class RunnerScene extends Scene
             return;
         }
 
+        const now = this.time.now;
+        if (now - this.lastAirSpawnTime < AIR_MIN_GAP_MS)
+        {
+            this.logFairness('Skip air spawn due to minimum gap.');
+            return;
+        }
+
         const x = WIDTH + METEOR.W;
-        const y = METEOR.yLevels[PhaserMath.Between(0, METEOR.yLevels.length - 1)];
+        let y = METEOR.yLevels[PhaserMath.Between(0, METEOR.yLevels.length - 1)];
+        const forceLow = this.shouldForceLowMeteorite(x);
+        if (forceLow)
+        {
+            y = METEOR_LANE_LOW_Y;
+            this.logFairness('Force low meteorite due to fairness window.');
+        }
+        else if (y === METEOR_LANE_HIGH_Y && this.hasGroundOverlap(x))
+        {
+            y = METEOR_LANE_LOW_Y;
+            this.logFairness('Avoided high meteorite due to ground overlap.');
+        }
         let obstacle;
 
         if (this.hasTexture('obstacle-meteor'))
@@ -255,6 +313,7 @@ export class RunnerScene extends Scene
         obstacle.setData('type', 'METEOR');
 
         this.flyingObstacles.add(obstacle);
+        this.lastAirSpawnTime = now;
     }
 
     spawnCrater ()
@@ -273,7 +332,13 @@ export class RunnerScene extends Scene
             crater = this.add.rectangle(x, y, CRATER_W, CRATER_DEPTH, 0x151515);
         }
         crater.setData('type', 'CRATER');
-        this.craters.push({ sprite: crater, xStart: x - CRATER_W / 2, xEnd: x + CRATER_W / 2 });
+        crater.setData('requiresJump', true);
+        this.craters.push({
+            sprite: crater,
+            xStart: x - CRATER_W / 2,
+            xEnd: x + CRATER_W / 2,
+            requiresJump: true
+        });
     }
 
     handleGameOver ()
@@ -285,26 +350,32 @@ export class RunnerScene extends Scene
 
         this.setPlayerState('hurt');
         this.isGameOver = true;
-        this.physics.pause();
-        this.groundTimer?.remove(false);
-        this.flyTimer?.remove(false);
+        this.stopSpawners();
+        this.player.body.setVelocity(0, 0);
+        this.player.body.setAllowGravity(false);
+        this.groundObstacles.getChildren().forEach((obstacle) => {
+            obstacle.body.setVelocityX(0);
+        });
+        this.flyingObstacles.getChildren().forEach((obstacle) => {
+            obstacle.body.setVelocityX(0);
+        });
 
         this.add.rectangle(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT, 0x000000, 0.5);
-        this.add.text(WIDTH / 2, HEIGHT * 0.45, 'Игра окончена', {
+        this.add.text(WIDTH / 2, HEIGHT * 0.45, 'Game Over', {
             fontFamily: 'Arial Black',
             fontSize: 56,
             color: '#ffffff',
             align: 'center'
         }).setOrigin(0.5);
 
-        this.add.text(WIDTH / 2, HEIGHT * 0.55, 'Нажми R для рестарта', {
+        this.add.text(WIDTH / 2, HEIGHT * 0.55, 'Press R to restart', {
             fontFamily: 'Arial',
             fontSize: 28,
             color: '#dddddd',
             align: 'center'
         }).setOrigin(0.5);
 
-        const restart = () => this.scene.restart();
+        const restart = () => this.restartGame();
         this.input.once('pointerdown', restart);
         this.input.keyboard.once('keydown-R', restart);
     }
@@ -318,7 +389,7 @@ export class RunnerScene extends Scene
 
         this.currentSpeed += SPEED_RAMP * (delta / 1000);
         this.score += (delta / 1000) * (this.currentSpeed / 100);
-        this.scoreText.setText(`Очки: ${Math.floor(this.score)}`);
+        this.scoreText.setText(`Score: ${Math.floor(this.score)}`);
         if (this.player.body.blocked.down)
         {
             this.setPlayerState('run');
@@ -362,6 +433,87 @@ export class RunnerScene extends Scene
                 this.handleGameOver();
             }
         }
+    }
+
+    stopSpawners ()
+    {
+        this.timedEvents.forEach((event) => event.remove(false));
+        this.timedEvents = [];
+        this.groundTimer = null;
+        this.flyTimer = null;
+    }
+
+    restartGame ()
+    {
+        if (this.isRestarting)
+        {
+            return;
+        }
+
+        this.isRestarting = true;
+        this.stopSpawners();
+
+        this.groundObstacles?.clear(true, true);
+        this.flyingObstacles?.clear(true, true);
+        this.craters.forEach((craterData) => craterData.sprite.destroy());
+        this.craters = [];
+
+        this.scene.restart();
+    }
+
+    shouldForceLowMeteorite (spawnX)
+    {
+        if (this.time.now < this.forceLowMeteorUntil)
+        {
+            return true;
+        }
+
+        return this.hasGroundOverlap(spawnX);
+    }
+
+    hasGroundOverlap (spawnX)
+    {
+        const overlapDistance = UNFAIR_OVERLAP_PX;
+        const playerX = this.player?.x ?? PLAYER_X;
+        const groundOverlap = this.groundObstacles.getChildren().some((obstacle) => {
+            if (!obstacle.active || !obstacle.getData('requiresJump'))
+            {
+                return false;
+            }
+            if (obstacle.x < playerX)
+            {
+                return false;
+            }
+            return Math.abs(spawnX - obstacle.x) <= overlapDistance;
+        });
+
+        if (groundOverlap)
+        {
+            return true;
+        }
+
+        return this.craters.some((craterData) => {
+            if (!craterData.requiresJump)
+            {
+                return false;
+            }
+            if (craterData.sprite.x < playerX)
+            {
+                return false;
+            }
+            return Math.abs(spawnX - craterData.sprite.x) <= overlapDistance;
+        });
+    }
+
+    logFairness (message)
+    {
+        if (!DEBUG_FAIRNESS)
+        {
+            return;
+        }
+
+        // eslint-disable-next-line no-console
+        console.debug(`[Fairness] ${message}`);
     }
 
     setPlayerState (state)
