@@ -3,6 +3,8 @@ export const HEIGHT = 960;
 
 export const BASE_SPEED = 500;
 export const SPEED_RAMP = 10;
+export const SEGMENT_WIDTH = 260;
+export const METEOR_COOLDOWN_SEGMENTS = 2;
 
 export const GRAVITY_Y = 1400;
 export const JUMP_VELOCITY = -620;
@@ -33,10 +35,11 @@ export const CRATER_W = 120;
 export const CRATER_DEPTH = 70;
 
 export const METEOR_LANE_LOW_Y = 600;
+export const METEOR_LANE_MID_Y = 560;
 export const METEOR_LANE_HIGH_Y = 520;
 
 export const METEOR = {
     W: 56,
     H: 28,
-    yLevels: [METEOR_LANE_LOW_Y, METEOR_LANE_HIGH_Y]
+    yLevels: [METEOR_LANE_LOW_Y, METEOR_LANE_MID_Y, METEOR_LANE_HIGH_Y]
 };
