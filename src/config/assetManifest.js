@@ -1,6 +1,6 @@
 export const ASSETS = {
     background: {
-        background: 'assets/moonrunner/background/background.png',
+        background: 'assets/moonrunner/background/sky.png',
         stars: 'assets/moonrunner/background/stars.png',
         mountains: 'assets/moonrunner/background/mountains.png',
         moonSurface: 'assets/moonrunner/background/moon_surface.png',
