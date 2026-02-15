@@ -2,16 +2,15 @@ import { Scene } from 'phaser';
 import { ASSETS } from '../../config/assetManifest';
 import {
     BASE_SPEED,
-    BG_CRATERS_HEIGHT,
-    BG_CRATERS_SPEED,
-    BG_CRATERS_Y,
-    BG_SKY_HEIGHT,
-    BG_STARS_HEIGHT,
-    BG_STARS_SPEED,
-    BG_STARS_Y,
-    BG_SURFACE_HEIGHT,
-    BG_SURFACE_SPEED,
-    BG_SURFACE_Y,
+    BG_BACKGROUND_Y,
+    BG_MOON_FOREGROUND_HEIGHT,
+    BG_MOON_FOREGROUND_SPEED,
+    BG_MOON_FOREGROUND_Y,
+    BG_MOON_SURFACE_HEIGHT,
+    BG_MOON_SURFACE_SPEED,
+    BG_MOON_SURFACE_Y,
+    BG_MOUNTAINS_SPEED,
+    BG_MOUNTAINS_Y,
     DEPTHS,
     GROUND_THICKNESS,
     GROUND_Y,
@@ -54,10 +53,11 @@ export class RunnerScene extends Scene
 
     preload ()
     {
-        this.load.image('bg-sky', ASSETS.background.sky);
-        this.load.image('bg-stars', ASSETS.background.starsStrip);
-        this.load.image('bg-craters', ASSETS.background.cratersStrip);
+        this.load.image('bg-background', ASSETS.background.background);
+        this.load.image('bg-stars', ASSETS.background.stars);
+        this.load.image('bg-mountains', ASSETS.background.mountains);
         this.load.image('bg-surface', ASSETS.background.moonSurface);
+        this.load.image('bg-foreground', ASSETS.background.moonForeground);
         this.load.image('obstacle-crater', ASSETS.obstacles.crater);
     }
 
@@ -130,84 +130,105 @@ export class RunnerScene extends Scene
     {
         const layers = {};
 
-        if (this.textures.exists('bg-sky'))
-        {
-            layers.sky = this.add.image(0, 0, 'bg-sky')
-                .setOrigin(0, 0)
-                .setDisplaySize(WIDTH, BG_SKY_HEIGHT)
-                .setDepth(DEPTHS.SKY);
-        }
-        else
-        {
-            const top = this.add.rectangle(WIDTH / 2, BG_SKY_HEIGHT * 0.25, WIDTH, BG_SKY_HEIGHT * 0.5, 0x0b0f1f)
-                .setDepth(DEPTHS.SKY);
-            const bottom = this.add.rectangle(WIDTH / 2, BG_SKY_HEIGHT * 0.75, WIDTH, BG_SKY_HEIGHT * 0.5, 0x141b2d)
-                .setDepth(DEPTHS.SKY);
-            layers.sky = [top, bottom];
-        }
+        layers.background = this.createStaticLayer({
+            key: 'bg-background',
+            fallbackKey: 'bg-background-fallback',
+            width: WIDTH,
+            height: HEIGHT,
+            x: 0,
+            y: BG_BACKGROUND_Y,
+            depth: DEPTHS.BACKGROUND,
+            draw: (context, width, height) => {
+                context.fillStyle = '#070b1a';
+                context.fillRect(0, 0, width, height);
+            }
+        });
 
-        layers.stars = this.createStripLayer({
+        layers.stars = this.createStaticLayer({
             key: 'bg-stars',
             fallbackKey: 'bg-stars-fallback',
             width: WIDTH,
-            height: BG_STARS_HEIGHT,
-            y: BG_STARS_Y,
+            height: HEIGHT,
+            x: 0,
+            y: BG_BACKGROUND_Y,
             depth: DEPTHS.STARS,
             draw: (context, width, height) => {
-                context.fillStyle = '#0b0f1f';
+                context.fillStyle = 'rgba(0, 0, 0, 0)';
                 context.fillRect(0, 0, width, height);
-                for (let i = 0; i < 12; i += 1)
+                context.fillStyle = '#ffffff';
+                for (let i = 0; i < 28; i += 1)
                 {
-                    const x = (width / 12) * i + 8;
-                    const y = 20 + (i % 4) * 18;
-                    const radius = 2 + (i % 3);
-                    context.fillStyle = '#ffffff';
+                    const x = 10 + (i * 19) % width;
+                    const y = 20 + (i * 31) % (height * 0.55);
                     context.beginPath();
-                    context.arc(x, y, radius, 0, Math.PI * 2);
+                    context.arc(x, y, 1 + (i % 3), 0, Math.PI * 2);
                     context.fill();
                 }
             }
         });
 
-        layers.craters = this.createStripLayer({
-            key: 'bg-craters',
-            fallbackKey: 'bg-craters-fallback',
+        layers.mountains = this.createTileLayer({
+            key: 'bg-mountains',
+            fallbackKey: 'bg-mountains-fallback',
             width: WIDTH,
-            height: BG_CRATERS_HEIGHT,
-            y: BG_CRATERS_Y,
-            depth: DEPTHS.CRATERS,
+            height: 60,
+            y: BG_MOUNTAINS_Y,
+            depth: DEPTHS.MOUNTAINS,
             draw: (context, width, height) => {
-                context.fillStyle = '#141b2d';
+                context.fillStyle = '#171d33';
                 context.fillRect(0, 0, width, height);
-                context.fillStyle = '#0f1524';
-                for (let i = 0; i < 4; i += 1)
+                context.fillStyle = '#202a48';
+                for (let i = 0; i < 8; i += 1)
                 {
-                    const craterX = 80 + i * 140;
-                    const craterY = height;
+                    const peakX = i * (width / 7);
                     context.beginPath();
-                    context.ellipse(craterX, craterY, 60, 25, 0, Math.PI, 0);
+                    context.moveTo(peakX - 80, height);
+                    context.lineTo(peakX, 8 + (i % 3) * 10);
+                    context.lineTo(peakX + 80, height);
+                    context.closePath();
                     context.fill();
                 }
             }
         });
 
-        layers.surface = this.createStripLayer({
+        layers.surface = this.createTileLayer({
             key: 'bg-surface',
             fallbackKey: 'bg-surface-fallback',
             width: WIDTH,
-            height: BG_SURFACE_HEIGHT,
-            y: BG_SURFACE_Y,
+            height: BG_MOON_SURFACE_HEIGHT,
+            y: BG_MOON_SURFACE_Y,
             depth: DEPTHS.SURFACE,
             draw: (context, width, height) => {
-                context.fillStyle = '#2a2a2a';
+                context.fillStyle = '#343434';
                 context.fillRect(0, 0, width, height);
-                context.fillStyle = '#1c1c1c';
+                context.fillStyle = '#222222';
+                for (let i = 0; i < 10; i += 1)
+                {
+                    const dotX = 40 + i * 52;
+                    const dotY = 20 + (i % 4) * 24;
+                    context.beginPath();
+                    context.arc(dotX, dotY, 6 + (i % 2), 0, Math.PI * 2);
+                    context.fill();
+                }
+            }
+        });
+
+        layers.foreground = this.createTileLayer({
+            key: 'bg-foreground',
+            fallbackKey: 'bg-foreground-fallback',
+            width: WIDTH,
+            height: BG_MOON_FOREGROUND_HEIGHT,
+            y: BG_MOON_FOREGROUND_Y,
+            depth: DEPTHS.FOREGROUND,
+            draw: (context, width, height) => {
+                // Передний срез луны перекрывает нижнюю часть геймплея.
+                context.fillStyle = '#1f1f1f';
+                context.fillRect(0, 0, width, height);
+                context.fillStyle = '#2b2b2b';
                 for (let i = 0; i < 6; i += 1)
                 {
-                    const dotX = 50 + i * 80;
-                    const dotY = 30 + (i % 3) * 20;
                     context.beginPath();
-                    context.arc(dotX, dotY, 6 + (i % 2) * 2, 0, Math.PI * 2);
+                    context.ellipse(80 + i * 90, 16, 42, 14, 0, 0, Math.PI * 2);
                     context.fill();
                 }
             }
@@ -216,15 +237,24 @@ export class RunnerScene extends Scene
         return layers;
     }
 
-    createStripLayer ({ key, fallbackKey, width, height, y, depth, draw })
+    createStaticLayer ({ key, fallbackKey, width, height, x, y, depth, draw })
     {
-        const textureKey = this.ensureStripTexture(key, fallbackKey, width, height, draw);
+        const textureKey = this.ensureTexture(key, fallbackKey, width, height, draw);
+        return this.add.image(x, y, textureKey)
+            .setOrigin(0, 0)
+            .setDisplaySize(width, height)
+            .setDepth(depth);
+    }
+
+    createTileLayer ({ key, fallbackKey, width, height, y, depth, draw })
+    {
+        const textureKey = this.ensureTexture(key, fallbackKey, Math.max(width, 1080), height, draw);
         return this.add.tileSprite(0, y, width, height, textureKey)
             .setOrigin(0, 0)
             .setDepth(depth);
     }
 
-    ensureStripTexture (key, fallbackKey, width, height, draw)
+    ensureTexture (key, fallbackKey, width, height, draw)
     {
         if (this.textures.exists(key))
         {
@@ -249,17 +279,19 @@ export class RunnerScene extends Scene
             return;
         }
 
-        if (this.backgroundLayers.stars)
+        if (this.backgroundLayers.mountains)
         {
-            this.backgroundLayers.stars.tilePositionX = this.scrollX * BG_STARS_SPEED;
+            this.backgroundLayers.mountains.tilePositionX = this.scrollX * BG_MOUNTAINS_SPEED;
         }
-        if (this.backgroundLayers.craters)
-        {
-            this.backgroundLayers.craters.tilePositionX = this.scrollX * BG_CRATERS_SPEED;
-        }
+
         if (this.backgroundLayers.surface)
         {
-            this.backgroundLayers.surface.tilePositionX = this.scrollX * BG_SURFACE_SPEED;
+            this.backgroundLayers.surface.tilePositionX = this.scrollX * BG_MOON_SURFACE_SPEED;
+        }
+
+        if (this.backgroundLayers.foreground)
+        {
+            this.backgroundLayers.foreground.tilePositionX = this.scrollX * BG_MOON_FOREGROUND_SPEED;
         }
     }
 

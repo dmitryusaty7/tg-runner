@@ -21,27 +21,32 @@ export const DEBUG_FAIRNESS = false;
 export const GROUND_THICKNESS = 80;
 export const GROUND_Y = 820;
 
-export const BG_SKY_HEIGHT = HEIGHT;
-export const BG_STARS_HEIGHT = 140;
-export const BG_STARS_Y = 80;
-export const BG_CRATERS_HEIGHT = 160;
-export const BG_CRATERS_Y = 520;
-export const BG_SURFACE_HEIGHT = 180;
-export const BG_SURFACE_Y = GROUND_Y - 120;
+export const VIEWPORT_WIDTH = 540;
+export const VIEWPORT_HEIGHT = 960;
+export const GROUND_LINE_Y = GROUND_Y;
 
-export const BG_STARS_SPEED = 0.1;
-export const BG_CRATERS_SPEED = 0.25;
-export const BG_SURFACE_SPEED = 0.7;
+export const BG_BACKGROUND_Y = 0;
+export const BG_STARS_Y = 0;
+export const BG_MOUNTAINS_Y = 300;
+export const BG_MOON_SURFACE_HEIGHT = 180;
+export const BG_MOON_SURFACE_Y = GROUND_LINE_Y - BG_MOON_SURFACE_HEIGHT / 2;
+export const BG_MOON_FOREGROUND_HEIGHT = 100;
+export const BG_MOON_FOREGROUND_Y = 860;
+
+export const BG_MOUNTAINS_SPEED = 0.2;
+export const BG_MOON_SURFACE_SPEED = 0.7;
+export const BG_MOON_FOREGROUND_SPEED = 0.5;
 
 export const DEPTHS = {
-    SKY: 0,
+    BACKGROUND: 0,
     STARS: 1,
-    CRATERS: 2,
+    MOUNTAINS: 2,
     SURFACE: 3,
     GROUND: 4,
     CRATER: 5,
     OBSTACLE: 6,
     PLAYER: 7,
+    FOREGROUND: 9,
     UI: 10
 };
 
