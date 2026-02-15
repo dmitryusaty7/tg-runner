@@ -2,15 +2,24 @@ import { Scene } from 'phaser';
 import { ASSETS } from '../../config/assetManifest';
 import {
     BASE_SPEED,
+    BG_BACKGROUND_HEIGHT,
+    BG_BACKGROUND_WIDTH,
     BG_BACKGROUND_Y,
     BG_MOON_FOREGROUND_HEIGHT,
     BG_MOON_FOREGROUND_SPEED,
+    BG_MOON_FOREGROUND_WIDTH,
     BG_MOON_FOREGROUND_Y,
     BG_MOON_SURFACE_HEIGHT,
     BG_MOON_SURFACE_SPEED,
+    BG_MOON_SURFACE_WIDTH,
     BG_MOON_SURFACE_Y,
+    BG_MOUNTAINS_HEIGHT,
     BG_MOUNTAINS_SPEED,
+    BG_MOUNTAINS_WIDTH,
     BG_MOUNTAINS_Y,
+    BG_STARS_HEIGHT,
+    BG_STARS_WIDTH,
+    BG_STARS_Y,
     DEPTHS,
     GROUND_THICKNESS,
     GROUND_Y,
@@ -133,8 +142,8 @@ export class RunnerScene extends Scene
         layers.background = this.createStaticLayer({
             key: 'bg-background',
             fallbackKey: 'bg-background-fallback',
-            width: WIDTH,
-            height: HEIGHT,
+            width: BG_BACKGROUND_WIDTH,
+            height: BG_BACKGROUND_HEIGHT,
             x: 0,
             y: BG_BACKGROUND_Y,
             depth: DEPTHS.BACKGROUND,
@@ -147,10 +156,10 @@ export class RunnerScene extends Scene
         layers.stars = this.createStaticLayer({
             key: 'bg-stars',
             fallbackKey: 'bg-stars-fallback',
-            width: WIDTH,
-            height: HEIGHT,
+            width: BG_STARS_WIDTH,
+            height: BG_STARS_HEIGHT,
             x: 0,
-            y: BG_BACKGROUND_Y,
+            y: BG_STARS_Y,
             depth: DEPTHS.STARS,
             draw: (context, width, height) => {
                 context.fillStyle = 'rgba(0, 0, 0, 0)';
@@ -170,8 +179,8 @@ export class RunnerScene extends Scene
         layers.mountains = this.createTileLayer({
             key: 'bg-mountains',
             fallbackKey: 'bg-mountains-fallback',
-            width: WIDTH,
-            height: 60,
+            width: BG_MOUNTAINS_WIDTH,
+            height: BG_MOUNTAINS_HEIGHT,
             y: BG_MOUNTAINS_Y,
             depth: DEPTHS.MOUNTAINS,
             draw: (context, width, height) => {
@@ -194,7 +203,7 @@ export class RunnerScene extends Scene
         layers.surface = this.createTileLayer({
             key: 'bg-surface',
             fallbackKey: 'bg-surface-fallback',
-            width: WIDTH,
+            width: BG_MOON_SURFACE_WIDTH,
             height: BG_MOON_SURFACE_HEIGHT,
             y: BG_MOON_SURFACE_Y,
             depth: DEPTHS.SURFACE,
@@ -216,7 +225,7 @@ export class RunnerScene extends Scene
         layers.foreground = this.createTileLayer({
             key: 'bg-foreground',
             fallbackKey: 'bg-foreground-fallback',
-            width: WIDTH,
+            width: BG_MOON_FOREGROUND_WIDTH,
             height: BG_MOON_FOREGROUND_HEIGHT,
             y: BG_MOON_FOREGROUND_Y,
             depth: DEPTHS.FOREGROUND,
@@ -248,8 +257,8 @@ export class RunnerScene extends Scene
 
     createTileLayer ({ key, fallbackKey, width, height, y, depth, draw })
     {
-        const textureKey = this.ensureTexture(key, fallbackKey, Math.max(width, 1080), height, draw);
-        return this.add.tileSprite(0, y, width, height, textureKey)
+        const textureKey = this.ensureTexture(key, fallbackKey, width, height, draw);
+        return this.add.tileSprite(0, y, WIDTH, height, textureKey)
             .setOrigin(0, 0)
             .setDepth(depth);
     }
