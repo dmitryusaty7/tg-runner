@@ -13,10 +13,12 @@
 
 ```
 public/assets/moonrunner/
-  backgrounds/
-    bg_sky.png
-    bg_far_craters.png
-    bg_ground.png
+  background/
+    background.png       (540x960)
+    stars.png            (540x960)
+    mountains.png        (1080x60)
+    moon_surface.png     (repeat-x, рекомендуется 1080x180)
+    moon_foreground.png  (1080x100)
   player/
     player_sheet.png
     player_sheet.json
@@ -31,7 +33,7 @@ public/assets/moonrunner/
     ui.json
 ```
 
-Ассеты подтягиваются автоматически по `src/config/assetManifest.js`. Если чего-то нет, игра продолжит работать на плейсхолдерах.
+Пять фоновых слоёв загружаются из `src/config/assetManifest.js`. Если какого-то файла нет, сцена автоматически подставит простую графику, и игра не сломается.
 
 ## Формат JSON для spritesheet
 

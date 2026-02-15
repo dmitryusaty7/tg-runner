@@ -1,9 +1,10 @@
 export const ASSETS = {
     background: {
-        sky: 'assets/moonrunner/background/sky.png',
-        starsStrip: 'assets/moonrunner/background/stars_strip.png',
-        cratersStrip: 'assets/moonrunner/background/craters_strip.png',
-        moonSurface: 'assets/moonrunner/background/moon_surface.png'
+        background: 'assets/moonrunner/background/background.png',
+        stars: 'assets/moonrunner/background/stars.png',
+        mountains: 'assets/moonrunner/background/mountains.png',
+        moonSurface: 'assets/moonrunner/background/moon_surface.png',
+        moonForeground: 'assets/moonrunner/background/moon_foreground.png'
     },
     player: {
         sheet: 'assets/moonrunner/player/player_sheet.png',
