@@ -1,5 +1,5 @@
 import { Scene } from 'phaser';
-import { ASSETS } from '../../config/assetManifest';
+import { ASSET_BY_ID, ASSET_LIST } from '../../config/assetManifest';
 import {
     BASE_SPEED,
     BG_BACKGROUND_HEIGHT,
@@ -58,16 +58,27 @@ export class RunnerScene extends Scene
         this.segmentProgress = 0;
         this.spawnWindow = 600;
         this.timeSinceSpawn = 0;
+        this.missingAssetIds = new Set();
     }
 
     preload ()
     {
-        this.load.image('bg-background', ASSETS.background.background);
-        this.load.image('bg-stars', ASSETS.background.stars);
-        this.load.image('bg-mountains', ASSETS.background.mountains);
-        this.load.image('bg-surface', ASSETS.background.moonSurface);
-        this.load.image('bg-foreground', ASSETS.background.moonForeground);
-        this.load.image('obstacle-crater', ASSETS.obstacles.crater);
+        this.preloadAssetsFromRegistry();
+    }
+
+    preloadAssetsFromRegistry ()
+    {
+        this.missingAssetIds.clear();
+        this.load.on('loaderror', (file) => {
+            if (file?.key)
+            {
+                this.missingAssetIds.add(file.key);
+            }
+        });
+
+        ASSET_LIST.forEach((asset) => {
+            this.load.image(asset.id, asset.path);
+        });
     }
 
     create ()
@@ -123,6 +134,51 @@ export class RunnerScene extends Scene
 
         this.input.on('pointerdown', jump);
         this.input.keyboard.on('keydown-SPACE', jump);
+
+        this.logAssetValidation();
+        this.createMissingAssetDebugOverlay();
+    }
+
+    logAssetValidation ()
+    {
+        const tableData = ASSET_LIST.map((asset) => {
+            const texture = this.textures.get(asset.id);
+            const source = texture?.getSourceImage?.();
+            const actualW = source?.width ?? null;
+            const actualH = source?.height ?? null;
+            const isMissing = this.missingAssetIds.has(asset.id) || !this.textures.exists(asset.id);
+            const wrongSize = !isMissing && (actualW !== asset.w || actualH !== asset.h);
+
+            return {
+                status: isMissing ? 'missing' : (wrongSize ? 'loaded (size mismatch)' : 'loaded'),
+                id: asset.id,
+                path: asset.path,
+                expected: `${asset.w}x${asset.h}`,
+                actual: actualW && actualH ? `${actualW}x${actualH}` : '-'
+            };
+        });
+
+        // Единая таблица для быстрой проверки ассетов в dev/prod.
+        console.groupCollapsed('[MoonRunner] Проверка ассетов');
+        console.table(tableData);
+        console.groupEnd();
+    }
+
+    createMissingAssetDebugOverlay ()
+    {
+        if (!import.meta.env.DEV || this.missingAssetIds.size === 0)
+        {
+            return;
+        }
+
+        const missingList = Array.from(this.missingAssetIds).join(', ');
+        this.add.text(12, 12, `Missing: ${missingList}`, {
+            fontFamily: 'monospace',
+            fontSize: 14,
+            color: '#ff8f8f',
+            backgroundColor: '#000000bb',
+            padding: { x: 6, y: 4 }
+        }).setDepth(DEPTHS.UI + 1).setScrollFactor(0);
     }
 
     handleJump ()
@@ -140,7 +196,7 @@ export class RunnerScene extends Scene
         const layers = {};
 
         layers.background = this.createStaticLayer({
-            key: 'bg-background',
+            key: ASSET_BY_ID['background.sky'].id,
             fallbackKey: 'bg-background-fallback',
             width: BG_BACKGROUND_WIDTH,
             height: BG_BACKGROUND_HEIGHT,
@@ -154,7 +210,7 @@ export class RunnerScene extends Scene
         });
 
         layers.stars = this.createStaticLayer({
-            key: 'bg-stars',
+            key: ASSET_BY_ID['background.stars'].id,
             fallbackKey: 'bg-stars-fallback',
             width: BG_STARS_WIDTH,
             height: BG_STARS_HEIGHT,
@@ -177,7 +233,7 @@ export class RunnerScene extends Scene
         });
 
         layers.mountains = this.createTileLayer({
-            key: 'bg-mountains',
+            key: ASSET_BY_ID['background.mountains'].id,
             fallbackKey: 'bg-mountains-fallback',
             width: BG_MOUNTAINS_WIDTH,
             height: BG_MOUNTAINS_HEIGHT,
@@ -201,7 +257,7 @@ export class RunnerScene extends Scene
         });
 
         layers.surface = this.createTileLayer({
-            key: 'bg-surface',
+            key: ASSET_BY_ID['background.moonSurface'].id,
             fallbackKey: 'bg-surface-fallback',
             width: BG_MOON_SURFACE_WIDTH,
             height: BG_MOON_SURFACE_HEIGHT,
@@ -223,7 +279,7 @@ export class RunnerScene extends Scene
         });
 
         layers.foreground = this.createTileLayer({
-            key: 'bg-foreground',
+            key: ASSET_BY_ID['background.moonForeground'].id,
             fallbackKey: 'bg-foreground-fallback',
             width: BG_MOON_FOREGROUND_WIDTH,
             height: BG_MOON_FOREGROUND_HEIGHT,
@@ -265,7 +321,7 @@ export class RunnerScene extends Scene
 
     ensureTexture (key, fallbackKey, width, height, draw)
     {
-        if (this.textures.exists(key))
+        if (this.textures.exists(key) && !this.missingAssetIds.has(key))
         {
             return key;
         }
@@ -381,6 +437,7 @@ export class RunnerScene extends Scene
             this.spawnSegment();
         }
 
+        this.player.update();
         this.obstacleManager.update(this.currentSpeed, delta / 1000);
 
         if (this.player.body.blocked.down)

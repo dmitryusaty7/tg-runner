@@ -1,0 +1,106 @@
+[
+  {
+    "id": "background.sky",
+    "path": "assets/moonrunner/background/sky.png",
+    "w": 540,
+    "h": 960,
+    "group": "background",
+    "notes": "Базовый слой неба"
+  },
+  {
+    "id": "background.stars",
+    "path": "assets/moonrunner/background/stars.png",
+    "w": 540,
+    "h": 960,
+    "group": "stars",
+    "notes": "Звёздный слой поверх неба"
+  },
+  {
+    "id": "background.mountains",
+    "path": "assets/moonrunner/background/mountains.png",
+    "w": 1080,
+    "h": 45,
+    "group": "mountains",
+    "notes": "Дальний параллакс гор"
+  },
+  {
+    "id": "background.moonSurface",
+    "path": "assets/moonrunner/background/moon_surface.png",
+    "w": 1080,
+    "h": 210,
+    "group": "surface",
+    "notes": "Поверхность луны"
+  },
+  {
+    "id": "background.moonForeground",
+    "path": "assets/moonrunner/background/moon_foreground.png",
+    "w": 1080,
+    "h": 100,
+    "group": "foreground",
+    "notes": "Передний слой луны"
+  },
+  {
+    "id": "obstacle.crater",
+    "path": "assets/moonrunner/obstacles/crater.png",
+    "w": 120,
+    "h": 70,
+    "group": "obstacle",
+    "notes": "Кратер на земле"
+  },
+  {
+    "id": "obstacle.rockSmall",
+    "path": "assets/moonrunner/obstacles/rock_small.png",
+    "w": 44,
+    "h": 32,
+    "group": "obstacle",
+    "notes": "Маленький камень"
+  },
+  {
+    "id": "obstacle.rockBig",
+    "path": "assets/moonrunner/obstacles/rock_big.png",
+    "w": 78,
+    "h": 56,
+    "group": "obstacle",
+    "notes": "Большой камень"
+  },
+  {
+    "id": "obstacle.meteor",
+    "path": "assets/moonrunner/obstacles/meteor.png",
+    "w": 56,
+    "h": 28,
+    "group": "obstacle",
+    "notes": "Летящий метеор"
+  },
+  {
+    "id": "player.run",
+    "path": "assets/moonrunner/player/vader_run.png",
+    "w": 64,
+    "h": 96,
+    "group": "player",
+    "notes": "Игрок в беге"
+  },
+  {
+    "id": "player.jump",
+    "path": "assets/moonrunner/player/vader_jump.png",
+    "w": 64,
+    "h": 96,
+    "group": "player",
+    "notes": "Игрок в прыжке"
+  },
+  {
+    "id": "player.hurt",
+    "path": "assets/moonrunner/player/vader_hurt.png",
+    "w": 64,
+    "h": 96,
+    "group": "player",
+    "notes": "Игрок при получении урона (допускается плейсхолдер)"
+  },
+  {
+    "id": "ui.logo",
+    "path": "assets/moonrunner/ui/logo.png",
+    "w": 500,
+    "h": 108,
+    "group": "ui",
+    "notes": "Логотип меню (опционально)"
+  }
+]

@@ -44,12 +44,13 @@ export class ObstacleManager
         const height = type === 'ROCK_SMALL' ? ROCK_SMALL_H : ROCK_BIG_H;
         const y = GROUND_Y - height / 2;
         const poolKey = type === 'ROCK_SMALL' ? 'rockSmall' : 'rockBig';
+        const textureKey = type === 'ROCK_SMALL' ? 'obstacle.rockSmall' : 'obstacle.rockBig';
         const obstacle = this.obtainFromPool(poolKey, () => {
-            const rect = this.scene.add.rectangle(0, 0, width, height, 0xff7a7a);
-            this.scene.physics.add.existing(rect);
-            rect.body.setAllowGravity(false);
-            rect.body.setImmovable(true);
-            return rect;
+            const sprite = this.createObstacleSprite(textureKey, `${textureKey}-fallback`, width, height, 0xff7a7a);
+            this.scene.physics.add.existing(sprite);
+            sprite.body.setAllowGravity(false);
+            sprite.body.setImmovable(true);
+            return sprite;
         });
 
         obstacle.setPosition(x, y);
@@ -72,11 +73,11 @@ export class ObstacleManager
         };
         const y = yMap[lane] ?? METEOR_LANE_MID_Y;
         const obstacle = this.obtainFromPool('meteor', () => {
-            const rect = this.scene.add.rectangle(0, 0, METEOR.W, METEOR.H, 0xffc857);
-            this.scene.physics.add.existing(rect);
-            rect.body.setAllowGravity(false);
-            rect.body.setImmovable(true);
-            return rect;
+            const sprite = this.createObstacleSprite('obstacle.meteor', 'obstacle.meteor-fallback', METEOR.W, METEOR.H, 0xffc857);
+            this.scene.physics.add.existing(sprite);
+            sprite.body.setAllowGravity(false);
+            sprite.body.setImmovable(true);
+            return sprite;
         });
 
         obstacle.setPosition(x, y);
@@ -93,7 +94,7 @@ export class ObstacleManager
     spawnCrater (x)
     {
         const y = GROUND_Y;
-        const crater = this.obtainFromPool('crater', () => this.createCraterFallback());
+        const crater = this.obtainFromPool('crater', () => this.createCraterSprite());
         crater.setPosition(x, y);
         crater.setActive(true).setVisible(true);
         crater.setDepth(DEPTHS.CRATER);
@@ -108,19 +109,50 @@ export class ObstacleManager
         return crater;
     }
 
-    createCraterFallback ()
+    createCraterSprite ()
     {
-        if (this.scene.textures.exists('obstacle-crater'))
+        if (this.scene.textures.exists('obstacle.crater') && !this.scene.missingAssetIds?.has('obstacle.crater'))
         {
-            return this.scene.add.image(0, 0, 'obstacle-crater').setOrigin(0.5, 1);
+            return this.scene.add.image(0, 0, 'obstacle.crater').setOrigin(0.5, 1).setDisplaySize(CRATER_W, CRATER_DEPTH);
         }
 
-        const graphics = this.scene.add.graphics();
-        graphics.fillStyle(0x0b0b0b, 1);
-        graphics.fillEllipse(0, -CRATER_DEPTH / 2, CRATER_W, CRATER_DEPTH);
-        graphics.lineStyle(3, 0x2a2a2a, 1);
-        graphics.strokeEllipse(0, -CRATER_DEPTH / 2, CRATER_W * 0.98, CRATER_DEPTH * 0.95);
-        return graphics;
+        if (!this.scene.textures.exists('obstacle.crater-fallback'))
+        {
+            const texture = this.scene.textures.createCanvas('obstacle.crater-fallback', CRATER_W, CRATER_DEPTH);
+            const context = texture.getContext();
+            context.fillStyle = '#0b0b0b';
+            context.beginPath();
+            context.ellipse(CRATER_W / 2, CRATER_DEPTH / 2, CRATER_W / 2, CRATER_DEPTH / 2, 0, 0, Math.PI * 2);
+            context.fill();
+            context.strokeStyle = '#2a2a2a';
+            context.lineWidth = 3;
+            context.stroke();
+            texture.refresh();
+        }
+
+        return this.scene.add.image(0, 0, 'obstacle.crater-fallback').setOrigin(0.5, 1);
+    }
+
+    createObstacleSprite (textureKey, fallbackKey, width, height, fallbackColor)
+    {
+        if (this.scene.textures.exists(textureKey) && !this.scene.missingAssetIds?.has(textureKey))
+        {
+            return this.scene.add.image(0, 0, textureKey).setDisplaySize(width, height);
+        }
+
+        if (!this.scene.textures.exists(fallbackKey))
+        {
+            const texture = this.scene.textures.createCanvas(fallbackKey, width, height);
+            const context = texture.getContext();
+            context.fillStyle = `#${fallbackColor.toString(16).padStart(6, '0')}`;
+            context.fillRect(0, 0, width, height);
+            context.strokeStyle = '#1a1a1a';
+            context.lineWidth = 2;
+            context.strokeRect(1, 1, width - 2, height - 2);
+            texture.refresh();
+        }
+
+        return this.scene.add.image(0, 0, fallbackKey).setDisplaySize(width, height);
     }
 
     update (speed, deltaSeconds)

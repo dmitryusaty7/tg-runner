@@ -1,48 +1,53 @@
 # Moon Runner (Phaser + Vite)
 
-Этот проект — каркас вертикального раннера на Phaser 3. Игра запускается даже без ассетов: если картинок нет, используются примитивы (прямоугольники), поэтому сборка не ломается.
+Этот проект — раннер на Phaser 3 + Vite. Игра не падает без картинок: если PNG не найден, автоматически подставляется плейсхолдер.
 
 ## Установка и запуск
 
-1. Установите зависимости: `npm install`
-2. Запустите dev-сервер: `npm run dev`
+1. Установите Node.js 18+.
+2. Установите зависимости:
+   ```bash
+   npm install
+   ```
+3. Запустите dev-сервер:
+   ```bash
+   npm run dev
+   ```
 
-## Куда класть ассеты
+## Asset checklist
 
-Структура папок:
+Единый реестр ассетов находится в `src/config/assetRegistry.json`.
 
-```
-public/assets/moonrunner/
-  background/
-    background.png       (540x960)
-    stars.png            (540x960)
-    mountains.png        (1080x60)
-    moon_surface.png     (repeat-x, рекомендуется 1080x180)
-    moon_foreground.png  (1080x100)
-  player/
-    player_sheet.png
-    player_sheet.json
-  obstacles/
-    obstacles.png
-    obstacles.json
-  fx/
-    meteor_flame.png
-    meteor_flame.json
-  ui/
-    ui.png
-    ui.json
-```
+> Как обновлять графику: просто положите PNG с тем же именем и путём, затем перезагрузите страницу.
 
-Пять фоновых слоёв загружаются из `src/config/assetManifest.js`. Если какого-то файла нет, сцена автоматически подставит простую графику, и игра не сломается.
+### Обязательные слои фона
 
-## Формат JSON для spritesheet
+- `background.sky` — `540x960` — `public/assets/moonrunner/background/sky.png`
+- `background.stars` — `540x960` — `public/assets/moonrunner/background/stars.png`
+- `background.mountains` — `1080x45` — `public/assets/moonrunner/background/mountains.png`
+- `background.moonSurface` — `1080x210` — `public/assets/moonrunner/background/moon_surface.png`
+- `background.moonForeground` — `1080x100` — `public/assets/moonrunner/background/moon_foreground.png`
 
-JSON содержит `frames` (x/y/w/h) и `anims` (fps/repeat). Хитбоксы автоматически подстраиваются под размер текущего кадра, поэтому можно использовать PNG разумного размера без ручной подгонки.
+### Обязательные препятствия
 
-## High Score
+- `obstacle.crater` — `120x70` — `public/assets/moonrunner/obstacles/crater.png`
+- `obstacle.rockSmall` — `44x32` — `public/assets/moonrunner/obstacles/rock_small.png`
+- `obstacle.rockBig` — `78x56` — `public/assets/moonrunner/obstacles/rock_big.png`
+- `obstacle.meteor` — `56x28` — `public/assets/moonrunner/obstacles/meteor.png`
 
-Лучший результат хранится локально в `localStorage` браузера и автоматически обновляется, когда вы набираете больше очков, чем раньше.
+### Игрок
 
-## Гарантия «честных» препятствий
+- `player.run` — `64x96` — `public/assets/moonrunner/player/vader_run.png`
+- `player.jump` — `64x96` — `public/assets/moonrunner/player/vader_jump.png`
+- `player.hurt` — `64x96` — `public/assets/moonrunner/player/vader_hurt.png` (если файла нет, будет плейсхолдер)
 
-Спавн идёт по сегментам фиксированной ширины. Для каждого сегмента выбирается паттерн препятствий и проверяются правила совместимости (например, кратер не ставится вместе с низким метеоритом, а серии «обязательных прыжков» ограничены). Если паттерн не проходит валидацию, он заменяется на пустой.
+### UI (опционально)
+
+- `ui.logo` — `500x108` — `public/assets/moonrunner/ui/logo.png`
+
+## Проверка ассетов во время запуска
+
+При старте `RunnerScene`:
+- все изображения грузятся из реестра;
+- в консоли печатается таблица loaded/missing с `id` и `path`;
+- в режиме разработки показывается overlay с отсутствующими `id` (например, `Missing: player.hurt`).
