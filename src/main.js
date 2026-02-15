@@ -1,4 +1,7 @@
-import { Game } from 'phaser';
-import gameConfig from './config/gameConfig';
+import StartGame from './game/main';
 
-new Game(gameConfig);
+document.addEventListener('DOMContentLoaded', () => {
+
+    StartGame('game-container');
+
+});
