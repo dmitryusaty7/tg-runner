@@ -1,3 +1,5 @@
+import { DEBUG } from '../config/gameConfig';
+
 const PLACEHOLDER_COLORS = Object.freeze({
     background: '#2c3e50',
     stars: '#2c3e50',
@@ -12,7 +14,7 @@ export class AssetLoader {
         this.basePath = basePath.replace(/\/$/, '');
         this.cache = new Map();
 
-        if (import.meta.env.DEV) {
+        if (DEBUG) {
             console.log('[assets] basePath=', this.basePath);
         }
     }
@@ -30,18 +32,18 @@ export class AssetLoader {
         }
 
         const playerStates = assetConfig.player?.states || {};
-        for (const [stateName, stateConfig] of Object.entries(playerStates)) {
+        for (const stateConfig of Object.values(playerStates)) {
             tasks.push(this.loadImage(
-                `player:${stateName}`,
+                stateConfig.key,
                 stateConfig.file,
                 assetConfig.player?.baseSize,
                 PLACEHOLDER_COLORS.player
             ));
         }
 
-        for (const [obstacleName, obstacleConfig] of Object.entries(assetConfig.obstacles || {})) {
+        for (const obstacleConfig of Object.values(assetConfig.obstacles || {})) {
             tasks.push(this.loadImage(
-                obstacleName,
+                obstacleConfig.key,
                 obstacleConfig.file,
                 obstacleConfig.baseSize,
                 PLACEHOLDER_COLORS.obstacle
@@ -53,10 +55,11 @@ export class AssetLoader {
 
     async loadImage(key, relPath, fallbackSize = { width: 1, height: 1 }, placeholderColor = '#000000') {
         const normalizedFallback = this.normalizeSize(fallbackSize);
-        const src = `${this.basePath}/${relPath}`;
+        const normalizedRelPath = String(relPath).replace(/^\/+/, '');
+        const src = `${this.basePath}/${normalizedRelPath}`;
 
-        if (import.meta.env.DEV) {
-            console.log('[assets] loading:', src);
+        if (DEBUG) {
+            console.log('[assets] loading', src);
         }
 
         try {
@@ -71,7 +74,9 @@ export class AssetLoader {
             this.cache.set(key, asset);
             return asset;
         } catch {
-            console.warn(`[AssetLoader] Ассет не найден: ${src}. Используется placeholder. Положите файл в public/assets/moonrunner/${relPath}.`);
+            if (DEBUG) {
+                console.warn('[assets] failed', src);
+            }
             const canvas = this.createPlaceholderCanvas(normalizedFallback, placeholderColor);
             const asset = {
                 key,

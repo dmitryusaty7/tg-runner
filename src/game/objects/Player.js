@@ -1,4 +1,4 @@
-import { DEPTHS, GRAVITY_Y, JUMP_VELOCITY, RUN_LINE_Y } from '../../config/gameConfig';
+import { DEBUG, DEPTHS, GRAVITY_Y, JUMP_VELOCITY, RUN_LINE_Y } from '../../config/gameConfig';
 
 export class Player
 {
@@ -42,6 +42,9 @@ export class Player
 
         if (this.sprite.body.blocked.down)
         {
+            if (DEBUG) {
+                console.log('[jump] triggered by input');
+            }
             this.sprite.body.setVelocityY(JUMP_VELOCITY);
             this.setState('jump');
         }
@@ -65,12 +68,12 @@ export class Player
 
     getCurrentSpriteKey ()
     {
-        return `player:${this.state}`;
+        return `player_${this.state}`;
     }
 
     getStateSize (stateName)
     {
-        const key = `player:${stateName}`;
+        const key = `player_${stateName}`;
         const asset = this.assetLoader?.get(key);
 
         if (asset && !asset.isPlaceholder)

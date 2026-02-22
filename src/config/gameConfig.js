@@ -17,6 +17,7 @@ export const UNFAIR_OVERLAP_PX = 220;
 export const AIR_MIN_GAP_MS = 900;
 export const GROUND_MIN_GAP_PX = 320;
 export const DEBUG_FAIRNESS = false;
+export const DEBUG = true;
 
 export const GROUND_THICKNESS = 80;
 export const GROUND_Y = 820;

@@ -10,7 +10,8 @@ import {
     PLAYER_X,
     SEGMENT_WIDTH,
     SPEED_RAMP,
-    WIDTH
+    WIDTH,
+    DEBUG
 } from '../../config/gameConfig';
 import { ASSET_CONFIG } from '../../systems/AssetManifest';
 import { AssetLoader } from '../../systems/AssetLoader';
@@ -60,6 +61,24 @@ export class RunnerScene extends Scene
 
         this.cameras.main.setBackgroundColor('#0f0f0f');
         this.physics.world.setBounds(0, 0, WIDTH, HEIGHT);
+
+        if (DEBUG) {
+            console.log('[debug] scene start');
+            console.log('[debug] viewport', ASSET_CONFIG.viewport);
+            console.log('[debug] RUN_LINE_Y', RUN_LINE_Y);
+        }
+
+        fetch('/assets/moonrunner/layers/bg_space.png')
+            .then((r) => {
+                if (DEBUG) {
+                    console.log('[assets] bg ok?', r.ok);
+                }
+            })
+            .catch(() => {
+                if (DEBUG) {
+                    console.warn('[assets] bg fetch failed');
+                }
+            });
 
         this.setupLayerRendering().then(() => {
             this.assetsReady = true;
@@ -149,7 +168,7 @@ export class RunnerScene extends Scene
 
     handleJump ()
     {
-        if (this.isGameOver || !this.assetsReady || !this.player || !this.obstacleManager)
+        if (this.isGameOver || !this.player)
         {
             return;
         }
@@ -190,7 +209,7 @@ export class RunnerScene extends Scene
 
     handleGameOver ()
     {
-        if (this.isGameOver || !this.assetsReady || !this.player || !this.obstacleManager || !this.scoreText)
+        if (this.isGameOver || !this.player || !this.obstacleManager || !this.scoreText)
         {
             return;
         }
@@ -207,7 +226,7 @@ export class RunnerScene extends Scene
 
     update (_, delta)
     {
-        if (this.isGameOver || !this.assetsReady || !this.player || !this.obstacleManager || !this.scoreText)
+        if (this.isGameOver || !this.player || !this.obstacleManager || !this.scoreText)
         {
             return;
         }

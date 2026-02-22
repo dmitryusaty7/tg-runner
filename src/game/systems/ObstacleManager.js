@@ -2,9 +2,9 @@ import {
     CRATER_DEPTH,
     CRATER_W,
     DEPTHS,
-    GROUND_Y,
     RUN_LINE_Y,
     METEOR,
+    DEBUG,
     METEOR_LANE_HIGH_Y,
     METEOR_LANE_LOW_Y,
     METEOR_LANE_MID_Y,
@@ -35,6 +35,17 @@ export class ObstacleManager
         };
     }
 
+
+    logSpawn (typeKey, x, y, width, height, obj)
+    {
+        if (!DEBUG)
+        {
+            return;
+        }
+
+        console.log('[spawn]', typeKey, 'x=', x, 'y=', y, 'w=', width, 'h=', height, 'visible=', obj.visible, 'alpha=', obj.alpha);
+    }
+
     getGroups ()
     {
         return {
@@ -45,6 +56,13 @@ export class ObstacleManager
 
     getConfigSize (configKey, fallbackWidth, fallbackHeight)
     {
+        const fallbackSizeByType = {
+            meteor: { width: 100, height: 40 },
+            crater: { width: 120, height: 40 },
+            rock_small: { width: 59, height: 48 },
+            rock_big: { width: 75, height: 85 }
+        };
+
         const config = this.obstacleConfig?.[configKey];
         const asset = this.assetLoader?.get(configKey);
 
@@ -54,8 +72,8 @@ export class ObstacleManager
         }
 
         return {
-            width: config?.baseSize?.width ?? fallbackWidth,
-            height: config?.baseSize?.height ?? fallbackHeight
+            width: config?.baseSize?.width ?? fallbackSizeByType[configKey]?.width ?? fallbackWidth,
+            height: config?.baseSize?.height ?? fallbackSizeByType[configKey]?.height ?? fallbackHeight
         };
     }
 
@@ -86,6 +104,7 @@ export class ObstacleManager
         obstacle.setData('type', isLarge ? 'ROCK_BIG' : 'ROCK_SMALL');
         obstacle.setData('requiresJump', true);
         this.groundGroup.add(obstacle);
+        this.logSpawn(configKey, x, y, width, height, obstacle);
         return obstacle;
     }
 
@@ -117,6 +136,7 @@ export class ObstacleManager
         obstacle.setData('type', 'METEOR');
         obstacle.setData('lane', lane);
         this.airGroup.add(obstacle);
+        this.logSpawn('meteor', x, y, width, height, obstacle);
         return obstacle;
     }
 
@@ -142,6 +162,7 @@ export class ObstacleManager
             xEnd: x + width / 2,
             requiresJump: true
         });
+        this.logSpawn('crater', x, y, width, height, crater);
         return crater;
     }
 
