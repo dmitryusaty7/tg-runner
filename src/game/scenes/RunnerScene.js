@@ -7,7 +7,6 @@ import {
     HEIGHT,
     METEOR_COOLDOWN_SEGMENTS,
     PLAYER_X,
-    PLAYER_Y,
     SEGMENT_WIDTH,
     SPEED_RAMP,
     WIDTH
@@ -66,10 +65,20 @@ export class RunnerScene extends Scene
             .setDepth(DEPTHS.GROUND);
         this.physics.add.existing(this.ground, true);
 
-        this.player = new Player(this, PLAYER_X, PLAYER_Y);
+        const moonSurfaceLayer = ASSET_CONFIG.layers.find((layer) => layer.key === 'moon_surface');
+        const moonSurfaceHeight = moonSurfaceLayer?.height ?? 0;
+        this.player = new Player(this, PLAYER_X, 0, {
+            assetLoader: this.assetLoader,
+            playerConfig: ASSET_CONFIG.player,
+            viewport: ASSET_CONFIG.viewport,
+            moonSurfaceHeight
+        });
         this.physics.add.collider(this.player.sprite, this.ground);
 
-        this.obstacleManager = new ObstacleManager(this);
+        this.obstacleManager = new ObstacleManager(this, {
+            assetLoader: this.assetLoader,
+            obstacleConfig: ASSET_CONFIG.obstacles
+        });
         const groups = this.obstacleManager.getGroups();
         this.physics.add.collider(this.player.sprite, groups.ground, () => this.handleGameOver());
         this.physics.add.collider(this.player.sprite, groups.air, () => this.handleGameOver());
