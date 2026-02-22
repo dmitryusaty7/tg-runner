@@ -18,9 +18,9 @@ export class AssetLoader {
 
         for (const layer of assetConfig.layers || []) {
             tasks.push(this.loadImage(
-                `layer:${layer.key}`,
+                layer.id,
                 layer.file,
-                layer.size,
+                layer.size || { width: layer.width, height: layer.height },
                 this.getLayerPlaceholderColor(layer)
             ));
         }
