@@ -101,7 +101,7 @@ export class ObstacleManager
         obstacle.setDepth(DEPTHS.OBSTACLE);
         obstacle.body.enable = true;
         obstacle.body.setSize(width, height, true);
-        obstacle.setData('type', type);
+        obstacle.setData('type', isLarge ? 'ROCK_BIG' : 'ROCK_SMALL');
         obstacle.setData('requiresJump', true);
         this.groundGroup.add(obstacle);
         this.logSpawn(configKey, x, y, width, height, obstacle);
