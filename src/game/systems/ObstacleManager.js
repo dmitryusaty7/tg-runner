@@ -3,6 +3,7 @@ import {
     CRATER_W,
     DEPTHS,
     GROUND_Y,
+    RUN_LINE_Y,
     METEOR,
     METEOR_LANE_HIGH_Y,
     METEOR_LANE_LOW_Y,
@@ -15,12 +16,16 @@ import {
 
 export class ObstacleManager
 {
-    constructor (scene)
+    constructor (scene, { assetLoader, obstacleConfig })
     {
         this.scene = scene;
+        this.assetLoader = assetLoader;
+        this.obstacleConfig = obstacleConfig;
+
         this.groundGroup = scene.physics.add.group({ allowGravity: false, immovable: true });
         this.airGroup = scene.physics.add.group({ allowGravity: false, immovable: true });
         this.craters = [];
+
 
         this.pool = {
             rockSmall: [],
@@ -38,21 +43,41 @@ export class ObstacleManager
         };
     }
 
+    getConfigSize (configKey, fallbackWidth, fallbackHeight)
+    {
+        const config = this.obstacleConfig?.[configKey];
+        const asset = this.assetLoader?.get(configKey);
+
+        if (asset && !asset.isPlaceholder)
+        {
+            return { width: asset.width, height: asset.height };
+        }
+
+        return {
+            width: config?.baseSize?.width ?? fallbackWidth,
+            height: config?.baseSize?.height ?? fallbackHeight
+        };
+    }
+
     spawnRock (type, x)
     {
-        const width = type === 'ROCK_SMALL' ? ROCK_SMALL_W : ROCK_BIG_W;
-        const height = type === 'ROCK_SMALL' ? ROCK_SMALL_H : ROCK_BIG_H;
-        const y = GROUND_Y - height / 2;
-        const poolKey = type === 'ROCK_SMALL' ? 'rockSmall' : 'rockBig';
-        const textureKey = type === 'ROCK_SMALL' ? 'obstacle.rockSmall' : 'obstacle.rockBig';
+        const configKey = type === 'ROCK_BIG' ? 'rock_big' : 'rock_small';
+        const poolKey = type === 'ROCK_BIG' ? 'rockBig' : 'rockSmall';
+        const fallbackWidth = type === 'ROCK_BIG' ? ROCK_BIG_W : ROCK_SMALL_W;
+        const fallbackHeight = type === 'ROCK_BIG' ? ROCK_BIG_H : ROCK_SMALL_H;
+        const { width, height } = this.getConfigSize(configKey, fallbackWidth, fallbackHeight);
+        const y = RUN_LINE_Y - height / 2;
+        const textureKey = this.ensureObstacleTexture(configKey, width, height);
+
         const obstacle = this.obtainFromPool(poolKey, () => {
-            const sprite = this.createObstacleSprite(textureKey, `${textureKey}-fallback`, width, height, 0xff7a7a);
-            this.scene.physics.add.existing(sprite);
+            const sprite = this.scene.physics.add.image(0, 0, textureKey);
             sprite.body.setAllowGravity(false);
             sprite.body.setImmovable(true);
             return sprite;
         });
 
+        obstacle.setTexture(textureKey);
+        obstacle.setDisplaySize(width, height);
         obstacle.setPosition(x, y);
         obstacle.setActive(true).setVisible(true);
         obstacle.setDepth(DEPTHS.OBSTACLE);
@@ -72,19 +97,23 @@ export class ObstacleManager
             LOW: METEOR_LANE_LOW_Y
         };
         const y = yMap[lane] ?? METEOR_LANE_MID_Y;
+        const { width, height } = this.getConfigSize('meteor', METEOR.W, METEOR.H);
+        const textureKey = this.ensureObstacleTexture('meteor', width, height);
+
         const obstacle = this.obtainFromPool('meteor', () => {
-            const sprite = this.createObstacleSprite('obstacle.meteor', 'obstacle.meteor-fallback', METEOR.W, METEOR.H, 0xffc857);
-            this.scene.physics.add.existing(sprite);
+            const sprite = this.scene.physics.add.image(0, 0, textureKey);
             sprite.body.setAllowGravity(false);
             sprite.body.setImmovable(true);
             return sprite;
         });
 
+        obstacle.setTexture(textureKey);
+        obstacle.setDisplaySize(width, height);
         obstacle.setPosition(x, y);
         obstacle.setActive(true).setVisible(true);
         obstacle.setDepth(DEPTHS.OBSTACLE);
         obstacle.body.enable = true;
-        obstacle.body.setSize(METEOR.W, METEOR.H, true);
+        obstacle.body.setSize(width, height, true);
         obstacle.setData('type', 'METEOR');
         obstacle.setData('lane', lane);
         this.airGroup.add(obstacle);
@@ -93,8 +122,15 @@ export class ObstacleManager
 
     spawnCrater (x)
     {
-        const y = GROUND_Y;
-        const crater = this.obtainFromPool('crater', () => this.createCraterSprite());
+        const { width, height } = this.getConfigSize('crater', CRATER_W, CRATER_DEPTH);
+        const craterTopOffset = Math.min(14, Math.round(height * 0.4));
+        const y = RUN_LINE_Y + craterTopOffset;
+        const textureKey = this.ensureObstacleTexture('crater', width, height);
+
+        const crater = this.obtainFromPool('crater', () => this.scene.add.image(0, 0, textureKey).setOrigin(0.5, 0));
+        crater.setTexture(textureKey);
+        crater.setOrigin(0.5, 0);
+        crater.setDisplaySize(width, height);
         crater.setPosition(x, y);
         crater.setActive(true).setVisible(true);
         crater.setDepth(DEPTHS.CRATER);
@@ -102,57 +138,38 @@ export class ObstacleManager
         crater.setData('requiresJump', true);
         this.craters.push({
             sprite: crater,
-            xStart: x - CRATER_W / 2,
-            xEnd: x + CRATER_W / 2,
+            xStart: x - width / 2,
+            xEnd: x + width / 2,
             requiresJump: true
         });
         return crater;
     }
 
-    createCraterSprite ()
+    ensureObstacleTexture (assetKey, width, height)
     {
-        if (this.scene.textures.exists('obstacle.crater') && !this.scene.missingAssetIds?.has('obstacle.crater'))
+        const textureKey = `asset:${assetKey}`;
+        const asset = this.assetLoader?.get(assetKey);
+        if (asset?.img)
         {
-            return this.scene.add.image(0, 0, 'obstacle.crater').setOrigin(0.5, 1).setDisplaySize(CRATER_W, CRATER_DEPTH);
+            if (this.scene.textures.exists(textureKey))
+            {
+                this.scene.textures.remove(textureKey);
+            }
+            this.scene.textures.addImage(textureKey, asset.img);
+            return textureKey;
         }
 
-        if (!this.scene.textures.exists('obstacle.crater-fallback'))
+        if (this.scene.textures.exists(textureKey))
         {
-            const texture = this.scene.textures.createCanvas('obstacle.crater-fallback', CRATER_W, CRATER_DEPTH);
-            const context = texture.getContext();
-            context.fillStyle = '#0b0b0b';
-            context.beginPath();
-            context.ellipse(CRATER_W / 2, CRATER_DEPTH / 2, CRATER_W / 2, CRATER_DEPTH / 2, 0, 0, Math.PI * 2);
-            context.fill();
-            context.strokeStyle = '#2a2a2a';
-            context.lineWidth = 3;
-            context.stroke();
-            texture.refresh();
+            return textureKey;
         }
 
-        return this.scene.add.image(0, 0, 'obstacle.crater-fallback').setOrigin(0.5, 1);
-    }
-
-    createObstacleSprite (textureKey, fallbackKey, width, height, fallbackColor)
-    {
-        if (this.scene.textures.exists(textureKey) && !this.scene.missingAssetIds?.has(textureKey))
-        {
-            return this.scene.add.image(0, 0, textureKey).setDisplaySize(width, height);
-        }
-
-        if (!this.scene.textures.exists(fallbackKey))
-        {
-            const texture = this.scene.textures.createCanvas(fallbackKey, width, height);
-            const context = texture.getContext();
-            context.fillStyle = `#${fallbackColor.toString(16).padStart(6, '0')}`;
-            context.fillRect(0, 0, width, height);
-            context.strokeStyle = '#1a1a1a';
-            context.lineWidth = 2;
-            context.strokeRect(1, 1, width - 2, height - 2);
-            texture.refresh();
-        }
-
-        return this.scene.add.image(0, 0, fallbackKey).setDisplaySize(width, height);
+        const texture = this.scene.textures.createCanvas(textureKey, width, height);
+        const context = texture.getContext();
+        context.fillStyle = '#e74c3c';
+        context.fillRect(0, 0, width, height);
+        texture.refresh();
+        return textureKey;
     }
 
     update (speed, deltaSeconds)
@@ -175,9 +192,9 @@ export class ObstacleManager
 
         this.craters = this.craters.filter((craterData) => {
             craterData.sprite.x -= speed * deltaSeconds;
-            craterData.xStart = craterData.sprite.x - CRATER_W / 2;
-            craterData.xEnd = craterData.sprite.x + CRATER_W / 2;
-            if (craterData.sprite.x < -CRATER_W)
+            craterData.xStart = craterData.sprite.x - craterData.sprite.displayWidth / 2;
+            craterData.xEnd = craterData.sprite.x + craterData.sprite.displayWidth / 2;
+            if (craterData.sprite.x < -craterData.sprite.displayWidth)
             {
                 this.releaseCrater(craterData.sprite);
                 return false;
