@@ -25,7 +25,6 @@ export class ObstacleManager
         this.airGroup = scene.physics.add.group({ allowGravity: false, immovable: true });
         this.craters = [];
 
-        this.availableObstacleTypes = Object.keys(obstacleConfig || {});
 
         this.pool = {
             rockSmall: [],
@@ -41,17 +40,6 @@ export class ObstacleManager
             ground: this.groundGroup,
             air: this.airGroup
         };
-    }
-
-    pickRandomGroundType ()
-    {
-        const groundTypes = this.availableObstacleTypes.filter((type) => type !== 'meteor');
-        if (groundTypes.length === 0)
-        {
-            return 'rock_small';
-        }
-        const index = Math.floor(Math.random() * groundTypes.length);
-        return groundTypes[index];
     }
 
     getConfigSize (configKey, fallbackWidth, fallbackHeight)
@@ -72,14 +60,13 @@ export class ObstacleManager
 
     spawnRock (type, x)
     {
-        const randomType = this.pickRandomGroundType();
-        const isLarge = randomType === 'rock_large';
-        const poolKey = isLarge ? 'rockBig' : 'rockSmall';
-        const fallbackWidth = isLarge ? ROCK_BIG_W : ROCK_SMALL_W;
-        const fallbackHeight = isLarge ? ROCK_BIG_H : ROCK_SMALL_H;
-        const { width, height } = this.getConfigSize(randomType, fallbackWidth, fallbackHeight);
+        const configKey = type === 'ROCK_BIG' ? 'rock_large' : 'rock_small';
+        const poolKey = type === 'ROCK_BIG' ? 'rockBig' : 'rockSmall';
+        const fallbackWidth = type === 'ROCK_BIG' ? ROCK_BIG_W : ROCK_SMALL_W;
+        const fallbackHeight = type === 'ROCK_BIG' ? ROCK_BIG_H : ROCK_SMALL_H;
+        const { width, height } = this.getConfigSize(configKey, fallbackWidth, fallbackHeight);
         const y = GROUND_Y - height / 2;
-        const textureKey = this.ensureObstacleTexture(`obstacle:${randomType}`, width, height);
+        const textureKey = this.ensureObstacleTexture(`obstacle:${configKey}`, width, height);
 
         const obstacle = this.obtainFromPool(poolKey, () => {
             const sprite = this.scene.physics.add.image(0, 0, textureKey);
@@ -134,12 +121,14 @@ export class ObstacleManager
 
     spawnCrater (x)
     {
-        const y = GROUND_Y;
         const { width, height } = this.getConfigSize('crater', CRATER_W, CRATER_DEPTH);
+        const craterTopOffset = Math.min(14, Math.round(height * 0.4));
+        const y = GROUND_Y + craterTopOffset;
         const textureKey = this.ensureObstacleTexture('obstacle:crater', width, height);
 
-        const crater = this.obtainFromPool('crater', () => this.scene.add.image(0, 0, textureKey).setOrigin(0.5, 1));
+        const crater = this.obtainFromPool('crater', () => this.scene.add.image(0, 0, textureKey).setOrigin(0.5, 0));
         crater.setTexture(textureKey);
+        crater.setOrigin(0.5, 0);
         crater.setDisplaySize(width, height);
         crater.setPosition(x, y);
         crater.setActive(true).setVisible(true);

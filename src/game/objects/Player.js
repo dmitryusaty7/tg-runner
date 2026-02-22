@@ -1,23 +1,20 @@
-import { DEPTHS, GRAVITY_Y, JUMP_VELOCITY } from '../../config/gameConfig';
+import { DEPTHS, GRAVITY_Y, GROUND_Y, JUMP_VELOCITY } from '../../config/gameConfig';
 
 export class Player
 {
-    constructor (scene, x, y, { assetLoader, playerConfig, viewport, moonSurfaceHeight })
+    constructor (scene, x, y, { assetLoader, playerConfig, groundY })
     {
         this.scene = scene;
         this.assetLoader = assetLoader;
         this.playerConfig = playerConfig;
-        this.viewport = viewport;
-        this.moonSurfaceHeight = moonSurfaceHeight;
+        this.groundY = groundY;
         this.state = 'run';
         this.isFalling = false;
 
         const initialSize = this.getStateSize(this.state);
-        const groundY = this.getGroundY();
-        const initialX = x;
-        const initialY = groundY - initialSize.height;
+        const initialY = this.getGroundY() - initialSize.height;
 
-        this.sprite = scene.physics.add.image(initialX, initialY, '__DEFAULT');
+        this.sprite = scene.physics.add.image(x, initialY, '__DEFAULT');
         this.sprite.setOrigin(0, 0);
         this.sprite.setDepth(DEPTHS.PLAYER);
         this.sprite.body.setCollideWorldBounds(true);
@@ -33,7 +30,7 @@ export class Player
 
     get x ()
     {
-        return this.sprite.x;
+        return this.sprite.x + this.sprite.displayWidth / 2;
     }
 
     jump ()
@@ -42,6 +39,7 @@ export class Player
         {
             return;
         }
+
         if (this.sprite.body.blocked.down)
         {
             this.sprite.body.setVelocityY(JUMP_VELOCITY);
@@ -91,14 +89,12 @@ export class Player
         const spriteKey = this.getCurrentSpriteKey();
         const textureKey = this.ensureTextureFromAsset(spriteKey);
         const size = this.getStateSize(this.state);
-
         const prevBottomY = this.sprite.y + this.sprite.displayHeight;
 
         this.sprite.setTexture(textureKey);
         this.sprite.setDisplaySize(size.width, size.height);
         this.sprite.body.setSize(size.width, size.height, true);
 
-        // Не ломаем привязку к земле: меняем только высоту хитбокса/спрайта.
         if (this.sprite.body.blocked.down)
         {
             this.sprite.y = this.getGroundY() - size.height;
@@ -112,7 +108,6 @@ export class Player
     ensureTextureFromAsset (assetKey)
     {
         const textureKey = `asset:${assetKey}`;
-
         const asset = this.assetLoader?.get(assetKey);
 
         if (asset?.img && !asset.isPlaceholder)
@@ -140,8 +135,7 @@ export class Player
 
     getGroundY ()
     {
-        const viewportHeight = this.viewport?.height ?? this.scene.scale.height;
-        return viewportHeight - (this.moonSurfaceHeight ?? 0);
+        return this.groundY ?? GROUND_Y;
     }
 
     update ()
@@ -176,6 +170,7 @@ export class Player
         {
             return;
         }
+
         this.isFalling = true;
         this.setState('damage');
         this.sprite.body.enable = false;

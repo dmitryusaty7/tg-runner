@@ -63,7 +63,7 @@ export class AssetLoader {
             this.cache.set(key, asset);
             return asset;
         } catch {
-            console.warn(`[AssetLoader] Ассет не найден: ${src}. Используется placeholder.`);
+            console.warn(`[AssetLoader] Ассет не найден: ${src}. Используется placeholder. Положите файл в public/assets/images/${relPath}.`);
             const canvas = this.createPlaceholderCanvas(normalizedFallback, placeholderColor);
             const asset = {
                 key,

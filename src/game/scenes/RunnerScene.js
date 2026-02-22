@@ -65,13 +65,10 @@ export class RunnerScene extends Scene
             .setDepth(DEPTHS.GROUND);
         this.physics.add.existing(this.ground, true);
 
-        const moonSurfaceLayer = ASSET_CONFIG.layers.find((layer) => layer.key === 'moon_surface');
-        const moonSurfaceHeight = moonSurfaceLayer?.height ?? 0;
         this.player = new Player(this, PLAYER_X, 0, {
             assetLoader: this.assetLoader,
             playerConfig: ASSET_CONFIG.player,
-            viewport: ASSET_CONFIG.viewport,
-            moonSurfaceHeight
+            groundY: GROUND_Y
         });
         this.physics.add.collider(this.player.sprite, this.ground);
 
