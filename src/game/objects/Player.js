@@ -1,4 +1,4 @@
-import { DEPTHS, GRAVITY_Y, GROUND_Y, JUMP_VELOCITY } from '../../config/gameConfig';
+import { DEPTHS, GRAVITY_Y, JUMP_VELOCITY, RUN_LINE_Y } from '../../config/gameConfig';
 
 export class Player
 {
@@ -110,7 +110,7 @@ export class Player
         const textureKey = `asset:${assetKey}`;
         const asset = this.assetLoader?.get(assetKey);
 
-        if (asset?.img && !asset.isPlaceholder)
+        if (asset?.img)
         {
             if (this.scene.textures.exists(textureKey))
             {
@@ -135,7 +135,7 @@ export class Player
 
     getGroundY ()
     {
-        return this.groundY ?? GROUND_Y;
+        return this.groundY ?? RUN_LINE_Y;
     }
 
     update ()

@@ -3,6 +3,7 @@ import {
     CRATER_W,
     DEPTHS,
     GROUND_Y,
+    RUN_LINE_Y,
     METEOR,
     METEOR_LANE_HIGH_Y,
     METEOR_LANE_LOW_Y,
@@ -45,7 +46,7 @@ export class ObstacleManager
     getConfigSize (configKey, fallbackWidth, fallbackHeight)
     {
         const config = this.obstacleConfig?.[configKey];
-        const asset = this.assetLoader?.get(`obstacle:${configKey}`);
+        const asset = this.assetLoader?.get(configKey);
 
         if (asset && !asset.isPlaceholder)
         {
@@ -60,13 +61,13 @@ export class ObstacleManager
 
     spawnRock (type, x)
     {
-        const configKey = type === 'ROCK_BIG' ? 'rock_large' : 'rock_small';
+        const configKey = type === 'ROCK_BIG' ? 'rock_big' : 'rock_small';
         const poolKey = type === 'ROCK_BIG' ? 'rockBig' : 'rockSmall';
         const fallbackWidth = type === 'ROCK_BIG' ? ROCK_BIG_W : ROCK_SMALL_W;
         const fallbackHeight = type === 'ROCK_BIG' ? ROCK_BIG_H : ROCK_SMALL_H;
         const { width, height } = this.getConfigSize(configKey, fallbackWidth, fallbackHeight);
-        const y = GROUND_Y - height / 2;
-        const textureKey = this.ensureObstacleTexture(`obstacle:${configKey}`, width, height);
+        const y = RUN_LINE_Y - height / 2;
+        const textureKey = this.ensureObstacleTexture(configKey, width, height);
 
         const obstacle = this.obtainFromPool(poolKey, () => {
             const sprite = this.scene.physics.add.image(0, 0, textureKey);
@@ -97,7 +98,7 @@ export class ObstacleManager
         };
         const y = yMap[lane] ?? METEOR_LANE_MID_Y;
         const { width, height } = this.getConfigSize('meteor', METEOR.W, METEOR.H);
-        const textureKey = this.ensureObstacleTexture('obstacle:meteor', width, height);
+        const textureKey = this.ensureObstacleTexture('meteor', width, height);
 
         const obstacle = this.obtainFromPool('meteor', () => {
             const sprite = this.scene.physics.add.image(0, 0, textureKey);
@@ -123,8 +124,8 @@ export class ObstacleManager
     {
         const { width, height } = this.getConfigSize('crater', CRATER_W, CRATER_DEPTH);
         const craterTopOffset = Math.min(14, Math.round(height * 0.4));
-        const y = GROUND_Y + craterTopOffset;
-        const textureKey = this.ensureObstacleTexture('obstacle:crater', width, height);
+        const y = RUN_LINE_Y + craterTopOffset;
+        const textureKey = this.ensureObstacleTexture('crater', width, height);
 
         const crater = this.obtainFromPool('crater', () => this.scene.add.image(0, 0, textureKey).setOrigin(0.5, 0));
         crater.setTexture(textureKey);
@@ -148,7 +149,7 @@ export class ObstacleManager
     {
         const textureKey = `asset:${assetKey}`;
         const asset = this.assetLoader?.get(assetKey);
-        if (asset?.img && !asset.isPlaceholder)
+        if (asset?.img)
         {
             if (this.scene.textures.exists(textureKey))
             {

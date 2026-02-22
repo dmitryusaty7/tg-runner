@@ -8,9 +8,13 @@ const PLACEHOLDER_COLORS = Object.freeze({
 });
 
 export class AssetLoader {
-    constructor({ basePath = '/assets/images' } = {}) {
+    constructor({ basePath = '/assets/moonrunner' } = {}) {
         this.basePath = basePath.replace(/\/$/, '');
         this.cache = new Map();
+
+        if (import.meta.env.DEV) {
+            console.log('[assets] basePath=', this.basePath);
+        }
     }
 
     async loadAll(assetConfig) {
@@ -37,7 +41,7 @@ export class AssetLoader {
 
         for (const [obstacleName, obstacleConfig] of Object.entries(assetConfig.obstacles || {})) {
             tasks.push(this.loadImage(
-                `obstacle:${obstacleName}`,
+                obstacleName,
                 obstacleConfig.file,
                 obstacleConfig.baseSize,
                 PLACEHOLDER_COLORS.obstacle
@@ -51,6 +55,10 @@ export class AssetLoader {
         const normalizedFallback = this.normalizeSize(fallbackSize);
         const src = `${this.basePath}/${relPath}`;
 
+        if (import.meta.env.DEV) {
+            console.log('[assets] loading:', src);
+        }
+
         try {
             const img = await this.createImage(src);
             const asset = {
@@ -63,7 +71,7 @@ export class AssetLoader {
             this.cache.set(key, asset);
             return asset;
         } catch {
-            console.warn(`[AssetLoader] Ассет не найден: ${src}. Используется placeholder. Положите файл в public/assets/images/${relPath}.`);
+            console.warn(`[AssetLoader] Ассет не найден: ${src}. Используется placeholder. Положите файл в public/assets/moonrunner/${relPath}.`);
             const canvas = this.createPlaceholderCanvas(normalizedFallback, placeholderColor);
             const asset = {
                 key,

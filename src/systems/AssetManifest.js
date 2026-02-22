@@ -5,7 +5,7 @@ export const ASSET_CONFIG = Object.freeze({
             id: 'layer:background',
             key: 'background',
             type: 'static',
-            file: 'layers/bg_space.png',
+            file: 'background/sky.png',
             width: 540,
             height: 960,
             size: { width: 540, height: 960 },
@@ -31,11 +31,11 @@ export const ASSET_CONFIG = Object.freeze({
             type: 'tile',
             file: 'layers/layer_mountains.png',
             width: 1080,
-            height: 45,
-            size: { width: 1080, height: 45 },
+            height: 155,
+            size: { width: 1080, height: 155 },
             anchor: 'bottom',
             offsetBottom: 210,
-            parallaxSpeed: 0.3,
+            parallaxSpeed: 0.35,
             repeatX: true,
             zIndex: 2
         },
@@ -43,7 +43,7 @@ export const ASSET_CONFIG = Object.freeze({
             id: 'layer:moon_surface',
             key: 'moon_surface',
             type: 'tile',
-            file: 'layers/layer_moon_surface.png',
+            file: 'background/moon_surface.png',
             width: 1080,
             height: 210,
             size: { width: 1080, height: 210 },
@@ -52,19 +52,6 @@ export const ASSET_CONFIG = Object.freeze({
             parallaxSpeed: 1,
             repeatX: true,
             zIndex: 3
-        },
-        {
-            id: 'layer:moon_foreground',
-            key: 'moon_foreground',
-            type: 'tile',
-            file: 'layers/layer_moon_foreground.png',
-            width: 1080,
-            height: 100,
-            size: { width: 1080, height: 100 },
-            anchor: 'bottom',
-            offsetBottom: 0,
-            repeatX: true,
-            zIndex: 4
         }
     ],
     player: {
@@ -72,13 +59,12 @@ export const ASSET_CONFIG = Object.freeze({
         baseSize: { width: 60, height: 85 },
         dynamicSize: true,
         groundReference: 'moon_surface',
-        // Подготовка под будущую анимационную структуру (дальше можно добавить frames).
         states: {
             run: {
-                file: 'player/player_run.png'
+                file: 'player/vader_run.png'
             },
             jump: {
-                file: 'player/player_jump.png'
+                file: 'player/vader_jump.png'
             },
             land: {
                 file: 'player/player_land.png'
@@ -91,25 +77,25 @@ export const ASSET_CONFIG = Object.freeze({
     obstacles: {
         meteor: {
             type: 'obstacle',
-            file: 'obstacles/obstacle_meteor.png',
+            file: 'obstacles/meteor.png',
             baseSize: { width: 80, height: 30 },
             groundReference: 'moon_surface'
         },
         crater: {
             type: 'obstacle',
-            file: 'obstacles/obstacle_crater.png',
+            file: 'obstacles/crater.png',
             baseSize: { width: 90, height: 30 },
             groundReference: 'moon_surface'
         },
         rock_small: {
             type: 'obstacle',
-            file: 'obstacles/obstacle_rock_small.png',
+            file: 'obstacles/rock_small.png',
             baseSize: { width: 45, height: 40 },
             groundReference: 'moon_surface'
         },
-        rock_large: {
+        rock_big: {
             type: 'obstacle',
-            file: 'obstacles/obstacle_rock_large.png',
+            file: 'obstacles/rock_big.png',
             baseSize: { width: 70, height: 90 },
             groundReference: 'moon_surface'
         }

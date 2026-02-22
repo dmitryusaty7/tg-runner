@@ -4,6 +4,7 @@ import {
     DEPTHS,
     GROUND_THICKNESS,
     GROUND_Y,
+    RUN_LINE_Y,
     HEIGHT,
     METEOR_COOLDOWN_SEGMENTS,
     PLAYER_X,
@@ -43,6 +44,7 @@ export class RunnerScene extends Scene
 
         this.assetLoader = null;
         this.layerRenderer = null;
+        this.assetsReady = false;
     }
 
     create ()
@@ -59,8 +61,14 @@ export class RunnerScene extends Scene
         this.cameras.main.setBackgroundColor('#0f0f0f');
         this.physics.world.setBounds(0, 0, WIDTH, HEIGHT);
 
-        this.setupLayerRendering();
+        this.setupLayerRendering().then(() => {
+            this.assetsReady = true;
+            this.startGameplay();
+        });
+    }
 
+    startGameplay ()
+    {
         this.ground = this.add.rectangle(WIDTH / 2, GROUND_Y + GROUND_THICKNESS / 2, WIDTH, GROUND_THICKNESS, 0x2b2b2b)
             .setDepth(DEPTHS.GROUND);
         this.physics.add.existing(this.ground, true);
@@ -68,7 +76,7 @@ export class RunnerScene extends Scene
         this.player = new Player(this, PLAYER_X, 0, {
             assetLoader: this.assetLoader,
             playerConfig: ASSET_CONFIG.player,
-            groundY: GROUND_Y
+            groundY: RUN_LINE_Y
         });
         this.physics.add.collider(this.player.sprite, this.ground);
 
@@ -108,12 +116,11 @@ export class RunnerScene extends Scene
         this.input.keyboard.on('keydown-SPACE', jump);
     }
 
-    setupLayerRendering ()
+    async setupLayerRendering ()
     {
-        this.assetLoader = new AssetLoader({ basePath: '/assets/images' });
+        this.assetLoader = new AssetLoader({ basePath: '/assets/moonrunner' });
 
-        // Загружаем ассеты асинхронно; при ошибке загрузчик вернёт placeholder.
-        this.assetLoader.loadAll(ASSET_CONFIG).catch((error) => {
+        await this.assetLoader.loadAll(ASSET_CONFIG).catch((error) => {
             console.warn('[LayerRenderer] Ошибка загрузки ассетов слоёв:', error);
         });
 
@@ -142,7 +149,7 @@ export class RunnerScene extends Scene
 
     handleJump ()
     {
-        if (this.isGameOver)
+        if (this.isGameOver || !this.assetsReady || !this.player || !this.obstacleManager)
         {
             return;
         }
@@ -183,7 +190,7 @@ export class RunnerScene extends Scene
 
     handleGameOver ()
     {
-        if (this.isGameOver)
+        if (this.isGameOver || !this.assetsReady || !this.player || !this.obstacleManager || !this.scoreText)
         {
             return;
         }
@@ -200,7 +207,7 @@ export class RunnerScene extends Scene
 
     update (_, delta)
     {
-        if (this.isGameOver)
+        if (this.isGameOver || !this.assetsReady || !this.player || !this.obstacleManager || !this.scoreText)
         {
             return;
         }
