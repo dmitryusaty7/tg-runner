@@ -35,7 +35,7 @@ export class Player
 
     get x ()
     {
-        return this.sprite.x + this.sprite.displayWidth / 2;
+        return this.sprite.x;
     }
 
     jump ()
