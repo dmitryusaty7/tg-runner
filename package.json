@@ -18,7 +18,9 @@
         "dev": "node log.js dev & vite --config vite/config.dev.mjs",
         "build": "node log.js build & vite build --config vite/config.prod.mjs",
         "dev-nolog": "vite --config vite/config.dev.mjs",
-        "build-nolog": "vite build --config vite/config.prod.mjs"
+        "build-nolog": "vite build --config vite/config.prod.mjs",
+        "clean:vite-cache": "node -e \"const fs=require('fs');fs.rmSync('node_modules/.vite',{recursive:true,force:true});console.log('vite cache cleaned');\"",
+        "dev:clean": "npm run clean:vite-cache && npm run dev-nolog"
     },
     "devDependencies": {
         "terser": "^5.39.0",

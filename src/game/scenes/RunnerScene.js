@@ -1,265 +1,158 @@
-import { Scene } from 'phaser';
-import {
-    BASE_SPEED,
-    DEPTHS,
-    GROUND_THICKNESS,
-    GROUND_Y,
-    RUN_LINE_Y,
-    HEIGHT,
-    METEOR_COOLDOWN_SEGMENTS,
-    PLAYER_H,
-    PLAYER_X,
-    SEGMENT_WIDTH,
-    SPEED_RAMP,
-    WIDTH,
-    DEBUG
-} from '../../config/gameConfig';
-import { ASSET_CONFIG } from '../../systems/AssetManifest';
-import { AssetLoader } from '../../systems/AssetLoader';
-import { LayerRenderer } from '../../systems/LayerRenderer';
-import { Player } from '../objects/Player';
-import { Difficulty } from '../systems/Difficulty';
-import { FairSpawn } from '../systems/FairSpawn';
-import { ObstacleManager } from '../systems/ObstacleManager';
-import { setHighScoreIfHigher } from '../systems/Storage';
+import Phaser from 'phaser';
 
-export class RunnerScene extends Scene
-{
-    constructor ()
-    {
-        super('RunnerScene');
+const VIEWPORT_WIDTH = 540;
+const VIEWPORT_HEIGHT = 960;
+const RUN_LINE_OFFSET_FROM_BOTTOM = 150;
+const RUN_LINE_Y = VIEWPORT_HEIGHT - RUN_LINE_OFFSET_FROM_BOTTOM;
+const BASE_SCROLL_SPEED = 200;
+const JUMP_VELOCITY = -420;
+const PLAYER_WIDTH = 60;
+const PLAYER_HEIGHT = 85;
+
+const OBSTACLE_TYPES = Object.freeze([
+    'crater',
+    'rock_big',
+    'rock_small',
+    'meteor'
+]);
+
+const OBSTACLE_SIZE = Object.freeze({
+    crater: { width: 100, height: 30 },
+    rock_big: { width: 75, height: 85 },
+    rock_small: { width: 60, height: 50 },
+    meteor: { width: 85, height: 40 }
+});
+
+export default class RunnerScene extends Phaser.Scene {
+    constructor () {
+        super({ key: 'RunnerScene' });
+        this.surface = null;
+        this.mountains = null;
         this.player = null;
         this.ground = null;
-        this.obstacleManager = null;
-        this.scrollX = 0;
-        this.difficulty = null;
-        this.fairSpawn = null;
-        this.currentSpeed = BASE_SPEED;
-        this.score = 0;
-        this.scoreText = null;
+        this.jumpKey = null;
+        this.obstacles = [];
+        this.spawnTimer = null;
         this.isGameOver = false;
-        this.isEnding = false;
-        this.elapsedSeconds = 0;
-        this.segmentProgress = 0;
-        this.spawnWindow = 600;
-        this.timeSinceSpawn = 0;
-
-        this.assetLoader = null;
-        this.layerRenderer = null;
-        this.assetsReady = false;
     }
 
-    create ()
-    {
-        this.currentSpeed = BASE_SPEED;
-        this.score = 0;
+    preload () {
+        this.load.image('bg_space', '/assets/images/layers/bg_space_540x960.png');
+        this.load.image('stars', '/assets/images/layers/bg_stars_overlay_540x960.png');
+        this.load.image('surface', '/assets/images/layers/layer_moon_surface_1080x210.png');
+        this.load.image('mountains', '/assets/images/layers/mountains_1080x155.png');
+        this.load.image('crater', '/assets/images/obstacles/crater_100x30.png');
+        this.load.image('meteor', '/assets/images/obstacles/meteor_85x40.png');
+        this.load.image('rock_big', '/assets/images/obstacles/rock_big_75x85.png');
+        this.load.image('rock_small', '/assets/images/obstacles/rock_small_60x50.png');
+    }
+
+    create () {
+        this.add.image(0, 0, 'bg_space').setOrigin(0, 0);
+        this.add.image(0, 0, 'stars').setOrigin(0, 0).setAlpha(1);
+
+        this.surface = this.add.tileSprite(0, 750, VIEWPORT_WIDTH, 210, 'surface').setOrigin(0, 0);
+        this.mountains = this.add.tileSprite(0, 595, VIEWPORT_WIDTH, 155, 'mountains').setOrigin(0, 0);
+
+        const g = this.make.graphics({ x: 0, y: 0, add: false });
+        g.fillStyle(0xffffff, 1);
+        g.fillRect(0, 0, PLAYER_WIDTH, PLAYER_HEIGHT);
+        g.generateTexture('player_rect', PLAYER_WIDTH, PLAYER_HEIGHT);
+        g.clear();
+        g.fillStyle(0xffffff, 1);
+        g.fillRect(0, 0, VIEWPORT_WIDTH, 10);
+        g.generateTexture('ground_rect', VIEWPORT_WIDTH, 10);
+        g.destroy();
+
+        this.player = this.physics.add.sprite(100, RUN_LINE_Y, 'player_rect');
+        this.player.setOrigin(0.5, 1);
+        this.player.body.setAllowGravity(true);
+        this.player.body.setGravityY(1400);
+        this.player.setCollideWorldBounds(true);
+
+        this.ground = this.physics.add.staticImage(VIEWPORT_WIDTH / 2, RUN_LINE_Y + 5, 'ground_rect')
+            .setDisplaySize(VIEWPORT_WIDTH, 10)
+            .setVisible(false);
+        this.physics.add.collider(this.player, this.ground);
+
+        this.jumpKey = this.input.keyboard.addKey('SPACE');
+        this.obstacles = [];
         this.isGameOver = false;
-        this.isEnding = false;
-        this.elapsedSeconds = 0;
-        this.segmentProgress = 0;
-        this.scrollX = 0;
-        this.startTime = this.time.now;
 
-        this.cameras.main.setBackgroundColor('#0f0f0f');
-        this.physics.world.setBounds(0, 0, WIDTH, HEIGHT);
-
-        if (DEBUG) {
-            console.log('[debug] scene start');
-            console.log('[debug] viewport', ASSET_CONFIG.viewport);
-            console.log('[debug] RUN_LINE_Y', RUN_LINE_Y);
-        }
-
-        fetch('/assets/images/layers/bg_space_540x960.png')
-            .then((r) => {
-                if (DEBUG) {
-                    console.log('[assets] bg ok?', r.ok);
-                }
-            })
-            .catch(() => {
-                if (DEBUG) {
-                    console.warn('[assets] bg fetch failed');
-                }
-            });
-
-        this.setupLayerRendering().then(() => {
-            this.assetsReady = true;
-            this.startGameplay();
+        this.spawnTimer = this.time.addEvent({
+            delay: 1200,
+            loop: true,
+            callback: () => this.spawnObstacle()
         });
     }
 
-    startGameplay ()
-    {
-        this.ground = this.add.rectangle(WIDTH / 2, GROUND_Y + GROUND_THICKNESS / 2, WIDTH, GROUND_THICKNESS, 0x2b2b2b)
-            .setDepth(DEPTHS.GROUND);
-        this.physics.add.existing(this.ground, true);
-
-        this.player = new Player(this, PLAYER_X, RUN_LINE_Y - PLAYER_H);
-        this.physics.add.collider(this.player.sprite, this.ground);
-
-        this.obstacleManager = new ObstacleManager(this, {
-            assetLoader: this.assetLoader,
-            obstacleConfig: ASSET_CONFIG.obstacles
-        });
-        const groups = this.obstacleManager.getGroups();
-        this.physics.add.collider(this.player.sprite, groups.ground, () => this.handleGameOver());
-        this.physics.add.collider(this.player.sprite, groups.air, () => this.handleGameOver());
-
-        this.scoreText = this.add.text(24, 24, 'Score: 0', {
-            fontFamily: 'Arial Black',
-            fontSize: 32,
-            color: '#ffffff'
-        }).setScrollFactor(0).setDepth(DEPTHS.UI);
-
-        this.difficulty = new Difficulty({
-            baseSpeed: BASE_SPEED,
-            maxSpeed: 900,
-            speedRamp: SPEED_RAMP,
-            spawnIntervalStart: 1100,
-            spawnIntervalMin: 600,
-            spawnIntervalRamp: 25
-        });
-
-        this.fairSpawn = new FairSpawn({
-            segmentWidth: SEGMENT_WIDTH,
-            spawnWindow: this.spawnWindow,
-            meteorCooldownSegments: METEOR_COOLDOWN_SEGMENTS,
-            maxAttempts: 6
-        });
-
-        const jump = () => this.handleJump();
-
-        this.input.on('pointerdown', jump);
-        this.input.keyboard.on('keydown-SPACE', jump);
-    }
-
-    async setupLayerRendering ()
-    {
-        this.assetLoader = new AssetLoader({ basePath: '/assets/images' });
-
-        await this.assetLoader.loadAll(ASSET_CONFIG).catch((error) => {
-            console.warn('[LayerRenderer] Ошибка загрузки ассетов слоёв:', error);
-        });
-
-        const ctx = this.game.canvas?.getContext('2d');
-        this.layerRenderer = new LayerRenderer({
-            ctx,
-            viewport: ASSET_CONFIG.viewport,
-            assetLoader: this.assetLoader,
-            layerConfig: ASSET_CONFIG.layers
-        });
-
-        this.game.events.on('prerender', this.renderLayers, this);
-        this.events.once('shutdown', () => {
-            this.game.events.off('prerender', this.renderLayers, this);
-        });
-    }
-
-    renderLayers ()
-    {
-        if (!this.layerRenderer) {
+    spawnObstacle () {
+        if (this.isGameOver) {
             return;
         }
 
-        this.layerRenderer.render({ worldX: this.scrollX });
+        const type = Phaser.Utils.Array.GetRandom(OBSTACLE_TYPES);
+        const x = 560;
+        const size = OBSTACLE_SIZE[type];
+
+        let y = RUN_LINE_Y - size.height;
+        if (type === 'meteor') {
+            const bottomY = RUN_LINE_Y - 140;
+            y = bottomY - OBSTACLE_SIZE.meteor.height;
+        }
+
+        const obstacle = this.physics.add.image(x, y, type).setOrigin(0, 0);
+        obstacle.body.setAllowGravity(false);
+        obstacle.setImmovable(true);
+
+        this.physics.add.overlap(this.player, obstacle, () => this.handleGameOver(), null, this);
+        this.obstacles.push(obstacle);
     }
 
-    handleJump ()
-    {
-        if (this.isGameOver || !this.player)
-        {
-            return;
-        }
-
-        this.player.jump();
-    }
-
-    spawnSegment ()
-    {
-        const spawnX = WIDTH + 60;
-        const pattern = this.fairSpawn.nextPattern(this.elapsedSeconds, () => this.canPlaceMeteor());
-
-        if (pattern.ground === 'ROCK_SMALL')
-        {
-            this.obstacleManager.spawnRock('ROCK_SMALL', spawnX);
-        }
-        else if (pattern.ground === 'ROCK_BIG')
-        {
-            this.obstacleManager.spawnRock('ROCK_BIG', spawnX);
-        }
-        else if (pattern.ground === 'CRATER')
-        {
-            this.obstacleManager.spawnCrater(spawnX);
-        }
-
-        if (pattern.meteor !== 'NONE')
-        {
-            this.obstacleManager.spawnMeteor(pattern.meteor, spawnX);
-        }
-    }
-
-    canPlaceMeteor ()
-    {
-        const groups = this.obstacleManager.getGroups();
-        const playerX = this.player.x;
-        return groups.air.getChildren().every((meteor) => meteor.x < playerX || meteor.x > playerX + this.spawnWindow);
-    }
-
-    handleGameOver ()
-    {
-        if (this.isGameOver || !this.player || !this.obstacleManager || !this.scoreText)
-        {
+    handleGameOver () {
+        if (this.isGameOver) {
             return;
         }
 
         this.isGameOver = true;
-        this.player.body.setVelocity(0, 0);
-        this.player.body.setAllowGravity(false);
-        this.score = Math.floor(this.score);
-        setHighScoreIfHigher(this.score);
-        this.time.delayedCall(100, () => {
-            this.scene.start('GameOver', { score: this.score });
-        });
+
+        if (this.spawnTimer) {
+            this.spawnTimer.remove(false);
+        }
+
+        this.player.setVelocity(0, 0);
+
+        this.add.text(VIEWPORT_WIDTH / 2, VIEWPORT_HEIGHT / 2, 'Game Over\nНажми R для рестарта', {
+            fontFamily: 'Arial',
+            fontSize: '28px',
+            color: '#ffffff',
+            align: 'center'
+        }).setOrigin(0.5);
+
+        this.input.keyboard.once('keydown-R', () => this.scene.restart());
     }
 
-    update (_, delta)
-    {
-        if (this.isGameOver || !this.player || !this.obstacleManager || !this.scoreText)
-        {
-            return;
-        }
+    update (_, delta) {
+        const deltaSec = delta / 1000;
 
-        this.elapsedSeconds = (this.time.now - this.startTime) / 1000;
-        this.currentSpeed = this.difficulty.getSpeed(this.elapsedSeconds);
-        this.score += (delta / 1000) * (this.currentSpeed / 100);
-        this.scoreText.setText(`Score: ${Math.floor(this.score)}`);
-
-        this.scrollX += this.currentSpeed * (delta / 1000);
-
-        this.segmentProgress += (this.currentSpeed * delta) / 1000;
-        this.timeSinceSpawn += delta;
-        while (this.segmentProgress >= SEGMENT_WIDTH)
-        {
-            const interval = this.difficulty.getSpawnInterval(this.elapsedSeconds);
-            if (this.timeSinceSpawn < interval)
-            {
-                break;
+        if (!this.isGameOver) {
+            if ((Phaser.Input.Keyboard.JustDown(this.jumpKey) || this.input.activePointer.justDown) && this.player.body.blocked.down) {
+                this.player.setVelocityY(JUMP_VELOCITY);
             }
-            this.segmentProgress -= SEGMENT_WIDTH;
-            this.timeSinceSpawn = 0;
-            this.spawnSegment();
-        }
 
-        this.player.update();
-        this.obstacleManager.update(this.currentSpeed, delta / 1000);
+            this.surface.tilePositionX += BASE_SCROLL_SPEED * deltaSec;
+            this.mountains.tilePositionX += BASE_SCROLL_SPEED * 0.35 * deltaSec;
 
-        if (this.player.body.blocked.down)
-        {
-            const playerX = this.player.x;
-            const inCrater = this.obstacleManager.craters.some((craterData) => playerX >= craterData.xStart && playerX <= craterData.xEnd);
-            if (inCrater && !this.isEnding)
-            {
-                this.isEnding = true;
-                this.player.fallIntoCrater(() => this.handleGameOver());
+            const moveX = BASE_SCROLL_SPEED * deltaSec;
+            for (let i = this.obstacles.length - 1; i >= 0; i -= 1) {
+                const obstacle = this.obstacles[i];
+                obstacle.x -= moveX;
+                obstacle.body.updateFromGameObject();
+
+                if (obstacle.x < -200) {
+                    obstacle.destroy();
+                    this.obstacles.splice(i, 1);
+                }
             }
         }
     }
