@@ -10,7 +10,7 @@ const PLACEHOLDER_COLORS = Object.freeze({
 });
 
 export class AssetLoader {
-    constructor({ basePath = '/assets/moonrunner' } = {}) {
+    constructor({ basePath = '/assets/images' } = {}) {
         this.basePath = basePath.replace(/\/$/, '');
         this.cache = new Map();
 

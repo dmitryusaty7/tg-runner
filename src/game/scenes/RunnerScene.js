@@ -7,6 +7,7 @@ import {
     RUN_LINE_Y,
     HEIGHT,
     METEOR_COOLDOWN_SEGMENTS,
+    PLAYER_H,
     PLAYER_X,
     SEGMENT_WIDTH,
     SPEED_RAMP,
@@ -68,7 +69,7 @@ export class RunnerScene extends Scene
             console.log('[debug] RUN_LINE_Y', RUN_LINE_Y);
         }
 
-        fetch('/assets/moonrunner/layers/bg_space.png')
+        fetch('/assets/images/layers/bg_space_540x960.png')
             .then((r) => {
                 if (DEBUG) {
                     console.log('[assets] bg ok?', r.ok);
@@ -92,11 +93,7 @@ export class RunnerScene extends Scene
             .setDepth(DEPTHS.GROUND);
         this.physics.add.existing(this.ground, true);
 
-        this.player = new Player(this, PLAYER_X, 0, {
-            assetLoader: this.assetLoader,
-            playerConfig: ASSET_CONFIG.player,
-            groundY: RUN_LINE_Y
-        });
+        this.player = new Player(this, PLAYER_X, RUN_LINE_Y - PLAYER_H);
         this.physics.add.collider(this.player.sprite, this.ground);
 
         this.obstacleManager = new ObstacleManager(this, {
@@ -137,7 +134,7 @@ export class RunnerScene extends Scene
 
     async setupLayerRendering ()
     {
-        this.assetLoader = new AssetLoader({ basePath: '/assets/moonrunner' });
+        this.assetLoader = new AssetLoader({ basePath: '/assets/images' });
 
         await this.assetLoader.loadAll(ASSET_CONFIG).catch((error) => {
             console.warn('[LayerRenderer] Ошибка загрузки ассетов слоёв:', error);

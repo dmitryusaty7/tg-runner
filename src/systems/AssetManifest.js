@@ -5,7 +5,7 @@ export const ASSET_CONFIG = Object.freeze({
             id: 'background',
             key: 'background',
             type: 'static',
-            file: 'layers/bg_space.png',
+            file: 'layers/bg_space_540x960.png',
             width: 540,
             height: 960,
             size: { width: 540, height: 960 },
@@ -17,7 +17,7 @@ export const ASSET_CONFIG = Object.freeze({
             id: 'stars',
             key: 'stars',
             type: 'static',
-            file: 'layers/bg_stars_overlay.png',
+            file: 'layers/bg_stars_overlay_540x960.png',
             width: 540,
             height: 960,
             size: { width: 540, height: 960 },
@@ -29,7 +29,7 @@ export const ASSET_CONFIG = Object.freeze({
             id: 'moon_surface',
             key: 'moon_surface',
             type: 'tile',
-            file: 'layers/layer_moon_surface.png',
+            file: 'layers/layer_moon_surface_1080x210.png',
             width: 1080,
             height: 210,
             size: { width: 1080, height: 210 },
@@ -43,7 +43,7 @@ export const ASSET_CONFIG = Object.freeze({
             id: 'mountains',
             key: 'mountains',
             type: 'tile',
-            file: 'layers/layer_mountains.png',
+            file: 'layers/mountains_1080x155.png',
             width: 1080,
             height: 155,
             size: { width: 1080, height: 155 },
@@ -58,54 +58,32 @@ export const ASSET_CONFIG = Object.freeze({
         type: 'entity',
         baseSize: { width: 60, height: 85 },
         dynamicSize: true,
-        groundReference: 'moon_surface',
-        states: {
-            run: {
-                key: 'player_run',
-                file: 'player/player_run.png'
-            },
-            jump: {
-                key: 'player_jump',
-                file: 'player/player_jump.png'
-            },
-            land: {
-                key: 'player_land',
-                file: 'player/player_land.png'
-            },
-            damage: {
-                key: 'player_damage',
-                file: 'player/player_damage.png'
-            }
-        }
+        states: {}
     },
     obstacles: {
         meteor: {
             key: 'meteor',
             type: 'obstacle',
-            file: 'obstacles/meteor.png',
-            baseSize: { width: 100, height: 40 },
-            groundReference: 'moon_surface'
+            file: 'obstacles/meteor_85x40.png',
+            baseSize: { width: 85, height: 40 }
         },
         crater: {
             key: 'crater',
-            type: 'obstacle',
-            file: 'obstacles/crater.png',
-            baseSize: { width: 120, height: 40 },
-            groundReference: 'moon_surface'
-        },
-        rock_small: {
-            key: 'rock_small',
-            type: 'obstacle',
-            file: 'obstacles/rock_small.png',
-            baseSize: { width: 59, height: 48 },
-            groundReference: 'moon_surface'
+            type: 'hole',
+            file: 'obstacles/crater_100x30.png',
+            baseSize: { width: 100, height: 30 }
         },
         rock_big: {
             key: 'rock_big',
             type: 'obstacle',
-            file: 'obstacles/rock_big.png',
-            baseSize: { width: 75, height: 85 },
-            groundReference: 'moon_surface'
+            file: 'obstacles/rock_big_75x85.png',
+            baseSize: { width: 75, height: 85 }
+        },
+        rock_small: {
+            key: 'rock_small',
+            type: 'obstacle',
+            file: 'obstacles/rock_small_60x50.png',
+            baseSize: { width: 60, height: 50 }
         }
     }
 });

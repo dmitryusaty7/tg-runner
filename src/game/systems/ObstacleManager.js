@@ -5,9 +5,6 @@ import {
     RUN_LINE_Y,
     METEOR,
     DEBUG,
-    METEOR_LANE_HIGH_Y,
-    METEOR_LANE_LOW_Y,
-    METEOR_LANE_MID_Y,
     ROCK_BIG_H,
     ROCK_BIG_W,
     ROCK_SMALL_H,
@@ -84,17 +81,18 @@ export class ObstacleManager
         const fallbackWidth = type === 'ROCK_BIG' ? ROCK_BIG_W : ROCK_SMALL_W;
         const fallbackHeight = type === 'ROCK_BIG' ? ROCK_BIG_H : ROCK_SMALL_H;
         const { width, height } = this.getConfigSize(configKey, fallbackWidth, fallbackHeight);
-        const y = RUN_LINE_Y - height / 2;
+        const y = RUN_LINE_Y - height;
         const textureKey = this.ensureObstacleTexture(configKey, width, height);
 
         const obstacle = this.obtainFromPool(poolKey, () => {
-            const sprite = this.scene.physics.add.image(0, 0, textureKey);
+            const sprite = this.scene.physics.add.image(0, 0, textureKey).setOrigin(0, 0);
             sprite.body.setAllowGravity(false);
             sprite.body.setImmovable(true);
             return sprite;
         });
 
         obstacle.setTexture(textureKey);
+        obstacle.setOrigin(0, 0);
         obstacle.setDisplaySize(width, height);
         obstacle.setPosition(x, y);
         obstacle.setActive(true).setVisible(true);
@@ -110,23 +108,19 @@ export class ObstacleManager
 
     spawnMeteor (lane, x)
     {
-        const yMap = {
-            HIGH: METEOR_LANE_HIGH_Y,
-            MID: METEOR_LANE_MID_Y,
-            LOW: METEOR_LANE_LOW_Y
-        };
-        const y = yMap[lane] ?? METEOR_LANE_MID_Y;
         const { width, height } = this.getConfigSize('meteor', METEOR.W, METEOR.H);
+        const y = RUN_LINE_Y - height;
         const textureKey = this.ensureObstacleTexture('meteor', width, height);
 
         const obstacle = this.obtainFromPool('meteor', () => {
-            const sprite = this.scene.physics.add.image(0, 0, textureKey);
+            const sprite = this.scene.physics.add.image(0, 0, textureKey).setOrigin(0, 0);
             sprite.body.setAllowGravity(false);
             sprite.body.setImmovable(true);
             return sprite;
         });
 
         obstacle.setTexture(textureKey);
+        obstacle.setOrigin(0, 0);
         obstacle.setDisplaySize(width, height);
         obstacle.setPosition(x, y);
         obstacle.setActive(true).setVisible(true);
