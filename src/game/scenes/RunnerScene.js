@@ -2,8 +2,12 @@ import Phaser from 'phaser';
 
 const VIEWPORT_WIDTH = 540;
 const VIEWPORT_HEIGHT = 960;
-const RUN_LINE_Y = 840;
+const RUN_LINE_OFFSET_FROM_BOTTOM = 150;
+const RUN_LINE_Y = VIEWPORT_HEIGHT - RUN_LINE_OFFSET_FROM_BOTTOM;
 const BASE_SCROLL_SPEED = 200;
+const JUMP_VELOCITY = -420;
+const PLAYER_WIDTH = 60;
+const PLAYER_HEIGHT = 85;
 
 const OBSTACLE_TYPES = Object.freeze([
     'crater',
@@ -25,7 +29,11 @@ export default class RunnerScene extends Phaser.Scene {
         this.surface = null;
         this.mountains = null;
         this.player = null;
+        this.ground = null;
+        this.jumpKey = null;
         this.obstacles = [];
+        this.spawnTimer = null;
+        this.isGameOver = false;
     }
 
     preload () {
@@ -46,10 +54,32 @@ export default class RunnerScene extends Phaser.Scene {
         this.surface = this.add.tileSprite(0, 750, VIEWPORT_WIDTH, 210, 'surface').setOrigin(0, 0);
         this.mountains = this.add.tileSprite(0, 595, VIEWPORT_WIDTH, 155, 'mountains').setOrigin(0, 0);
 
-        this.player = this.add.rectangle(100, RUN_LINE_Y - 85, 60, 85, 0xffffff).setOrigin(0, 0);
-        this.obstacles = [];
+        const g = this.make.graphics({ x: 0, y: 0, add: false });
+        g.fillStyle(0xffffff, 1);
+        g.fillRect(0, 0, PLAYER_WIDTH, PLAYER_HEIGHT);
+        g.generateTexture('player_rect', PLAYER_WIDTH, PLAYER_HEIGHT);
+        g.clear();
+        g.fillStyle(0xffffff, 1);
+        g.fillRect(0, 0, VIEWPORT_WIDTH, 10);
+        g.generateTexture('ground_rect', VIEWPORT_WIDTH, 10);
+        g.destroy();
 
-        this.time.addEvent({
+        this.player = this.physics.add.sprite(100, RUN_LINE_Y, 'player_rect');
+        this.player.setOrigin(0.5, 1);
+        this.player.body.setAllowGravity(true);
+        this.player.body.setGravityY(1400);
+        this.player.setCollideWorldBounds(true);
+
+        this.ground = this.physics.add.staticImage(VIEWPORT_WIDTH / 2, RUN_LINE_Y + 5, 'ground_rect')
+            .setDisplaySize(VIEWPORT_WIDTH, 10)
+            .setVisible(false);
+        this.physics.add.collider(this.player, this.ground);
+
+        this.jumpKey = this.input.keyboard.addKey('SPACE');
+        this.obstacles = [];
+        this.isGameOver = false;
+
+        this.spawnTimer = this.time.addEvent({
             delay: 1200,
             loop: true,
             callback: () => this.spawnObstacle()
@@ -57,34 +87,72 @@ export default class RunnerScene extends Phaser.Scene {
     }
 
     spawnObstacle () {
-        const type = Phaser.Utils.Array.GetRandom(OBSTACLE_TYPES);
-        const x = VIEWPORT_WIDTH + 20;
-        const { height } = OBSTACLE_SIZE[type];
+        if (this.isGameOver) {
+            return;
+        }
 
-        let y = RUN_LINE_Y - height;
+        const type = Phaser.Utils.Array.GetRandom(OBSTACLE_TYPES);
+        const x = 560;
+        const size = OBSTACLE_SIZE[type];
+
+        let y = RUN_LINE_Y - size.height;
         if (type === 'meteor') {
             const bottomY = RUN_LINE_Y - 140;
             y = bottomY - OBSTACLE_SIZE.meteor.height;
         }
 
-        const obstacle = this.add.image(x, y, type).setOrigin(0, 0);
+        const obstacle = this.physics.add.image(x, y, type).setOrigin(0, 0);
+        obstacle.body.setAllowGravity(false);
+        obstacle.setImmovable(true);
+
+        this.physics.add.overlap(this.player, obstacle, () => this.handleGameOver(), null, this);
         this.obstacles.push(obstacle);
+    }
+
+    handleGameOver () {
+        if (this.isGameOver) {
+            return;
+        }
+
+        this.isGameOver = true;
+
+        if (this.spawnTimer) {
+            this.spawnTimer.remove(false);
+        }
+
+        this.player.setVelocity(0, 0);
+
+        this.add.text(VIEWPORT_WIDTH / 2, VIEWPORT_HEIGHT / 2, 'Game Over\nНажми R для рестарта', {
+            fontFamily: 'Arial',
+            fontSize: '28px',
+            color: '#ffffff',
+            align: 'center'
+        }).setOrigin(0.5);
+
+        this.input.keyboard.once('keydown-R', () => this.scene.restart());
     }
 
     update (_, delta) {
         const deltaSec = delta / 1000;
 
-        this.surface.tilePositionX += BASE_SCROLL_SPEED * deltaSec;
-        this.mountains.tilePositionX += BASE_SCROLL_SPEED * 0.35 * deltaSec;
+        if (!this.isGameOver) {
+            if ((Phaser.Input.Keyboard.JustDown(this.jumpKey) || this.input.activePointer.justDown) && this.player.body.blocked.down) {
+                this.player.setVelocityY(JUMP_VELOCITY);
+            }
 
-        const moveX = BASE_SCROLL_SPEED * deltaSec;
-        for (let i = this.obstacles.length - 1; i >= 0; i -= 1) {
-            const obstacle = this.obstacles[i];
-            obstacle.x -= moveX;
+            this.surface.tilePositionX += BASE_SCROLL_SPEED * deltaSec;
+            this.mountains.tilePositionX += BASE_SCROLL_SPEED * 0.35 * deltaSec;
 
-            if (obstacle.x < -200) {
-                obstacle.destroy();
-                this.obstacles.splice(i, 1);
+            const moveX = BASE_SCROLL_SPEED * deltaSec;
+            for (let i = this.obstacles.length - 1; i >= 0; i -= 1) {
+                const obstacle = this.obstacles[i];
+                obstacle.x -= moveX;
+                obstacle.body.updateFromGameObject();
+
+                if (obstacle.x < -200) {
+                    obstacle.destroy();
+                    this.obstacles.splice(i, 1);
+                }
             }
         }
     }
