@@ -2,7 +2,7 @@ import { DEPTHS, GRAVITY_Y, JUMP_VELOCITY, PLAYER_H, PLAYER_W } from '../../conf
 
 export class Player
 {
-    constructor (scene, x, y)
+    constructor (scene, x, y, { assetLoader, playerConfig, groundY })
     {
         this.scene = scene;
         this.isFalling = false;
@@ -34,6 +34,9 @@ export class Player
 
         if (this.sprite.body.blocked.down)
         {
+            if (DEBUG) {
+                console.log('[jump] triggered by input');
+            }
             this.sprite.body.setVelocityY(JUMP_VELOCITY);
         }
     }
