@@ -226,44 +226,52 @@ export class RunnerScene extends Scene
 
     update (_, delta)
     {
-        if (this.isGameOver || !this.player || !this.obstacleManager || !this.scoreText)
+        try
         {
-            return;
-        }
-
-        this.elapsedSeconds = (this.time.now - this.startTime) / 1000;
-        this.currentSpeed = this.difficulty.getSpeed(this.elapsedSeconds);
-        this.score += (delta / 1000) * (this.currentSpeed / 100);
-        this.scoreText.setText(`Score: ${Math.floor(this.score)}`);
-
-        this.scrollX += this.currentSpeed * (delta / 1000);
-
-        this.segmentProgress += (this.currentSpeed * delta) / 1000;
-        this.timeSinceSpawn += delta;
-        while (this.segmentProgress >= SEGMENT_WIDTH)
-        {
-            const interval = this.difficulty.getSpawnInterval(this.elapsedSeconds);
-            if (this.timeSinceSpawn < interval)
+            if (this.isGameOver || !this.player || !this.obstacleManager || !this.scoreText)
             {
-                break;
+                return;
             }
-            this.segmentProgress -= SEGMENT_WIDTH;
-            this.timeSinceSpawn = 0;
-            this.spawnSegment();
-        }
 
-        this.player.update();
-        this.obstacleManager.update(this.currentSpeed, delta / 1000);
+            this.elapsedSeconds = (this.time.now - this.startTime) / 1000;
+            this.currentSpeed = this.difficulty.getSpeed(this.elapsedSeconds);
+            this.score += (delta / 1000) * (this.currentSpeed / 100);
+            this.scoreText.setText(`Score: ${Math.floor(this.score)}`);
 
-        if (this.player.body.blocked.down)
-        {
-            const playerX = this.player.x;
-            const inCrater = this.obstacleManager.craters.some((craterData) => playerX >= craterData.xStart && playerX <= craterData.xEnd);
-            if (inCrater && !this.isEnding)
+            this.scrollX += this.currentSpeed * (delta / 1000);
+
+            this.segmentProgress += (this.currentSpeed * delta) / 1000;
+            this.timeSinceSpawn += delta;
+            while (this.segmentProgress >= SEGMENT_WIDTH)
             {
-                this.isEnding = true;
-                this.player.fallIntoCrater(() => this.handleGameOver());
+                const interval = this.difficulty.getSpawnInterval(this.elapsedSeconds);
+                if (this.timeSinceSpawn < interval)
+                {
+                    break;
+                }
+                this.segmentProgress -= SEGMENT_WIDTH;
+                this.timeSinceSpawn = 0;
+                this.spawnSegment();
             }
+
+            this.player.update();
+            this.obstacleManager.update(this.currentSpeed, delta / 1000);
+
+            if (this.player.body.blocked.down)
+            {
+                const playerX = this.player.x;
+                const inCrater = this.obstacleManager.craters.some((craterData) => playerX >= craterData.xStart && playerX <= craterData.xEnd);
+                if (inCrater && !this.isEnding)
+                {
+                    this.isEnding = true;
+                    this.player.fallIntoCrater(() => this.handleGameOver());
+                }
+            }
+        }
+        catch (error)
+        {
+            console.error('[scene] update error', error);
+            this.handleGameOver();
         }
     }
 }
