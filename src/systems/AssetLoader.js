@@ -60,6 +60,7 @@ export class AssetLoader {
 
         if (DEBUG) {
             console.log('[assets] loading', src);
+            this.logFetchStatus(src);
         }
 
         try {
@@ -132,6 +133,15 @@ export class AssetLoader {
             image.onerror = () => reject(new Error(`Не удалось загрузить изображение: ${src}`));
             image.src = src;
         });
+    }
+
+    async logFetchStatus(src) {
+        try {
+            const response = await fetch(src, { method: 'HEAD' });
+            console.log('[assets] fetch', src, 'r.ok=', response.ok);
+        } catch (error) {
+            console.warn('[assets] fetch failed', src, error);
+        }
     }
 
     createPlaceholderCanvas(size, color) {

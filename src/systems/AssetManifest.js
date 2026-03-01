@@ -23,7 +23,7 @@ export const ASSET_CONFIG = Object.freeze({
             size: { width: 540, height: 960 },
             anchor: 'top-left',
             zIndex: 1,
-            opacity: 0.6
+            opacity: 1
         },
         {
             id: 'moon_surface',
