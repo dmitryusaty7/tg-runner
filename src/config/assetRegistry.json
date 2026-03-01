@@ -32,14 +32,6 @@
     "notes": "Поверхность луны"
   },
   {
-    "id": "background.moonForeground",
-    "path": "assets/moonrunner/background/moon_foreground.png",
-    "w": 1080,
-    "h": 100,
-    "group": "foreground",
-    "notes": "Передний слой луны"
-  },
-  {
     "id": "obstacle.crater",
     "path": "assets/moonrunner/obstacles/crater.png",
     "w": 120,

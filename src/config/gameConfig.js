@@ -17,12 +17,15 @@ export const UNFAIR_OVERLAP_PX = 220;
 export const AIR_MIN_GAP_MS = 900;
 export const GROUND_MIN_GAP_PX = 320;
 export const DEBUG_FAIRNESS = false;
+export const DEBUG = true;
 
 export const GROUND_THICKNESS = 80;
 export const GROUND_Y = 820;
 
 export const VIEWPORT_WIDTH = 540;
 export const VIEWPORT_HEIGHT = 960;
+export const RUN_LINE_OFFSET_FROM_BOTTOM = 155;
+export const RUN_LINE_Y = VIEWPORT_HEIGHT - RUN_LINE_OFFSET_FROM_BOTTOM;
 export const GROUND_LINE_Y = GROUND_Y;
 
 export const BG_BACKGROUND_WIDTH = VIEWPORT_WIDTH;
