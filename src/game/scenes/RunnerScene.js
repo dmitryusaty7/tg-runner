@@ -14,7 +14,6 @@ import {
 } from '../../config/gameConfig';
 import { ASSET_CONFIG } from '../../systems/AssetManifest';
 import { AssetLoader } from '../../systems/AssetLoader';
-import { LayerRenderer } from '../../systems/LayerRenderer';
 import { Player } from '../objects/Player';
 import { Difficulty } from '../systems/Difficulty';
 import { FairSpawn } from '../systems/FairSpawn';
@@ -43,8 +42,12 @@ export class RunnerScene extends Scene
         this.timeSinceSpawn = 0;
 
         this.assetLoader = null;
-        this.layerRenderer = null;
         this.assetsReady = false;
+
+        this.backgroundLayer = null;
+        this.starsLayer = null;
+        this.moonSurfaceLayer = null;
+        this.mountainsLayer = null;
     }
 
     create ()
@@ -67,28 +70,21 @@ export class RunnerScene extends Scene
             console.log('[debug] GROUND_Y', GROUND_Y);
         }
 
-        fetch('/assets/images/layers/bg_space_540x960.png')
-            .then((r) => {
-                if (DEBUG) {
-                    console.log('[assets] bg ok?', r.ok);
-                }
-            })
-            .catch(() => {
-                if (DEBUG) {
-                    console.warn('[assets] bg fetch failed');
-                }
-            });
-
         this.setupLayerRendering().then(() => {
             this.assetsReady = true;
             this.startGameplay();
+            if (DEBUG)
+            {
+                console.log('[scene] ready');
+            }
         });
     }
 
     startGameplay ()
     {
         this.ground = this.add.rectangle(WIDTH / 2, GROUND_Y + GROUND_THICKNESS / 2, WIDTH, GROUND_THICKNESS, 0x2b2b2b)
-            .setDepth(DEPTHS.GROUND);
+            .setDepth(DEPTHS.GROUND)
+            .setAlpha(0.001);
         this.physics.add.existing(this.ground, true);
 
         this.player = new Player(this, PLAYER_X, GROUND_Y, { groundY: GROUND_Y });
@@ -140,30 +136,36 @@ export class RunnerScene extends Scene
         this.assetLoader = new AssetLoader({ basePath: '/assets/images' });
 
         await this.assetLoader.loadAll(ASSET_CONFIG).catch((error) => {
-            console.warn('[LayerRenderer] Ошибка загрузки ассетов слоёв:', error);
+            console.warn('[layers] Ошибка загрузки ассетов слоёв:', error);
         });
 
-        const ctx = this.game.canvas?.getContext('2d');
-        this.layerRenderer = new LayerRenderer({
-            ctx,
-            viewport: ASSET_CONFIG.viewport,
-            assetLoader: this.assetLoader,
-            layerConfig: ASSET_CONFIG.layers
-        });
-
-        this.game.events.on('prerender', this.renderLayers, this);
-        this.events.once('shutdown', () => {
-            this.game.events.off('prerender', this.renderLayers, this);
-        });
-    }
-
-    renderLayers ()
-    {
-        if (!this.layerRenderer) {
-            return;
+        if (DEBUG)
+        {
+            console.log('[assets] loaded keys', Array.from(this.assetLoader.cache.keys()));
         }
 
-        this.layerRenderer.render({ worldX: this.scrollX });
+        const ySurface = HEIGHT - 210;
+        const yMountains = ySurface - 155;
+
+        const bgTextureKey = this.assetLoader.ensurePhaserTexture(this, 'layer:bg_space', 'bg_space', WIDTH, HEIGHT, '#2c3e50');
+        this.backgroundLayer = this.add.image(0, 0, bgTextureKey).setOrigin(0, 0).setDepth(DEPTHS.BACKGROUND);
+
+        const starsTextureKey = this.assetLoader.ensurePhaserTexture(this, 'layer:stars', 'stars', WIDTH, HEIGHT, '#2c3e50');
+        this.starsLayer = this.add.image(0, 0, starsTextureKey).setOrigin(0, 0).setDepth(DEPTHS.STARS);
+
+        const surfaceTextureKey = this.assetLoader.ensurePhaserTexture(this, 'layer:moon_surface', 'moon_surface', 1080, 210, '#34495e');
+        this.moonSurfaceLayer = this.add.tileSprite(0, ySurface, WIDTH, 210, surfaceTextureKey).setOrigin(0, 0).setDepth(DEPTHS.SURFACE);
+
+        const mountainsTextureKey = this.assetLoader.ensurePhaserTexture(this, 'layer:mountains', 'mountains', 1080, 155, '#34495e');
+        this.mountainsLayer = this.add.tileSprite(0, yMountains, WIDTH, 155, mountainsTextureKey).setOrigin(0, 0).setDepth(DEPTHS.MOUNTAINS);
+
+        if (DEBUG)
+        {
+            console.log('[layers] created', { texKey: bgTextureKey, w: WIDTH, h: HEIGHT, y: 0 });
+            console.log('[layers] created', { texKey: starsTextureKey, w: WIDTH, h: HEIGHT, y: 0 });
+            console.log('[layers] created', { texKey: surfaceTextureKey, w: WIDTH, h: 210, y: ySurface });
+            console.log('[layers] created', { texKey: mountainsTextureKey, w: WIDTH, h: 155, y: yMountains });
+        }
     }
 
     handleJump ()
@@ -240,9 +242,22 @@ export class RunnerScene extends Scene
 
             this.scrollX += this.currentSpeed * (delta / 1000);
 
-            this.segmentProgress += (this.currentSpeed * delta) / 1000;
-            this.timeSinceSpawn += delta;
-            while (this.segmentProgress >= SEGMENT_WIDTH)
+        if (this.moonSurfaceLayer)
+        {
+            this.moonSurfaceLayer.tilePositionX = this.scrollX * 1.0;
+        }
+
+        if (this.mountainsLayer)
+        {
+            this.mountainsLayer.tilePositionX = this.scrollX * 0.35;
+        }
+
+        this.segmentProgress += (this.currentSpeed * delta) / 1000;
+        this.timeSinceSpawn += delta;
+        while (this.segmentProgress >= SEGMENT_WIDTH)
+        {
+            const interval = this.difficulty.getSpawnInterval(this.elapsedSeconds);
+            if (this.timeSinceSpawn < interval)
             {
                 const interval = this.difficulty.getSpawnInterval(this.elapsedSeconds);
                 if (this.timeSinceSpawn < interval)

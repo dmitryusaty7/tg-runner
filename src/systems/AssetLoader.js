@@ -91,6 +91,29 @@ export class AssetLoader {
         }
     }
 
+    ensurePhaserTexture(scene, phaserKey, assetKey, fallbackW = 1, fallbackH = 1, placeholderColor = '#000000') {
+        const asset = this.get(assetKey);
+
+        if (asset?.img) {
+            if (scene.textures.exists(phaserKey)) {
+                scene.textures.remove(phaserKey);
+            }
+            scene.textures.addImage(phaserKey, asset.img);
+            return phaserKey;
+        }
+
+        if (scene.textures.exists(phaserKey)) {
+            scene.textures.remove(phaserKey);
+        }
+
+        const texture = scene.textures.createCanvas(phaserKey, fallbackW, fallbackH);
+        const context = texture.getContext();
+        context.fillStyle = placeholderColor;
+        context.fillRect(0, 0, fallbackW, fallbackH);
+        texture.refresh();
+        return phaserKey;
+    }
+
     get(key) {
         return this.cache.get(key);
     }
