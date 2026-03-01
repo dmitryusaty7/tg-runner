@@ -9,13 +9,13 @@ export class Player
         this.isFalling = false;
 
         // Игрок остаётся простым прямоугольником до появления готовых player PNG.
-        // Позиционируем по нижнему центру, чтобы y = groundY всегда означал линию "ступней".
-        this.sprite = scene.add.rectangle(x, groundY, PLAYER_W, PLAYER_H, 0x4fd1c5).setOrigin(0.5, 1).setDepth(DEPTHS.PLAYER);
+        // Позиционируем по верхнему левому углу: y рассчитывается от линии земли.
+        this.sprite = scene.add.rectangle(x, groundY - PLAYER_H, PLAYER_W, PLAYER_H, 0x4fd1c5).setOrigin(0, 0).setDepth(DEPTHS.PLAYER);
         this.scene.physics.add.existing(this.sprite);
         this.sprite.body.setCollideWorldBounds(true);
         this.sprite.body.setGravityY(GRAVITY_Y);
         this.sprite.body.setSize(PLAYER_W, PLAYER_H, false);
-        this.sprite.body.setOffset(-PLAYER_W / 2, -PLAYER_H);
+        this.sprite.body.setOffset(0, 0);
 
         if (DEBUG)
         {

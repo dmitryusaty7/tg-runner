@@ -2,8 +2,8 @@ export const ASSET_CONFIG = Object.freeze({
     viewport: { width: 540, height: 960 },
     layers: [
         {
-            id: 'background',
-            key: 'background',
+            id: 'bg_space',
+            key: 'bg_space',
             type: 'static',
             file: 'layers/bg_space_540x960.png',
             width: 540,
