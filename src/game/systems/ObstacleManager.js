@@ -2,7 +2,7 @@ import {
     CRATER_DEPTH,
     CRATER_W,
     DEPTHS,
-    RUN_LINE_Y,
+    GROUND_Y,
     METEOR,
     DEBUG,
     ROCK_BIG_H,
@@ -76,12 +76,13 @@ export class ObstacleManager
 
     spawnRock (type, x)
     {
+        const isLarge = type === 'ROCK_BIG';
         const configKey = type === 'ROCK_BIG' ? 'rock_big' : 'rock_small';
         const poolKey = type === 'ROCK_BIG' ? 'rockBig' : 'rockSmall';
         const fallbackWidth = type === 'ROCK_BIG' ? ROCK_BIG_W : ROCK_SMALL_W;
         const fallbackHeight = type === 'ROCK_BIG' ? ROCK_BIG_H : ROCK_SMALL_H;
         const { width, height } = this.getConfigSize(configKey, fallbackWidth, fallbackHeight);
-        const y = RUN_LINE_Y - height;
+        const y = GROUND_Y - height;
         const textureKey = this.ensureObstacleTexture(configKey, width, height);
 
         const obstacle = this.obtainFromPool(poolKey, () => {
@@ -98,7 +99,8 @@ export class ObstacleManager
         obstacle.setActive(true).setVisible(true);
         obstacle.setDepth(DEPTHS.OBSTACLE);
         obstacle.body.enable = true;
-        obstacle.body.setSize(width, height, true);
+        obstacle.body.setSize(width, height, false);
+        obstacle.body.setOffset(0, 0);
         obstacle.setData('type', isLarge ? 'ROCK_BIG' : 'ROCK_SMALL');
         obstacle.setData('requiresJump', true);
         this.groundGroup.add(obstacle);
@@ -109,7 +111,9 @@ export class ObstacleManager
     spawnMeteor (lane, x)
     {
         const { width, height } = this.getConfigSize('meteor', METEOR.W, METEOR.H);
-        const y = RUN_LINE_Y - height;
+        const laneToIndex = { HIGH: 0, MID: 1, LOW: 2 };
+        const laneIndex = laneToIndex[lane] ?? 2;
+        const y = METEOR.yLevels[laneIndex] ?? METEOR.yLevels[2];
         const textureKey = this.ensureObstacleTexture('meteor', width, height);
 
         const obstacle = this.obtainFromPool('meteor', () => {
@@ -126,7 +130,8 @@ export class ObstacleManager
         obstacle.setActive(true).setVisible(true);
         obstacle.setDepth(DEPTHS.OBSTACLE);
         obstacle.body.enable = true;
-        obstacle.body.setSize(width, height, true);
+        obstacle.body.setSize(width, height, false);
+        obstacle.body.setOffset(0, 0);
         obstacle.setData('type', 'METEOR');
         obstacle.setData('lane', lane);
         this.airGroup.add(obstacle);
@@ -138,7 +143,7 @@ export class ObstacleManager
     {
         const { width, height } = this.getConfigSize('crater', CRATER_W, CRATER_DEPTH);
         const craterTopOffset = Math.min(14, Math.round(height * 0.4));
-        const y = RUN_LINE_Y + craterTopOffset;
+        const y = GROUND_Y + craterTopOffset;
         const textureKey = this.ensureObstacleTexture('crater', width, height);
 
         const crater = this.obtainFromPool('crater', () => this.scene.add.image(0, 0, textureKey).setOrigin(0.5, 0));
