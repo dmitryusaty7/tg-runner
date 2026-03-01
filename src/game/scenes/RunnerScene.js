@@ -4,8 +4,13 @@ const VIEWPORT_WIDTH = 540;
 const VIEWPORT_HEIGHT = 960;
 const RUN_LINE_OFFSET_FROM_BOTTOM = 150;
 const RUN_LINE_Y = VIEWPORT_HEIGHT - RUN_LINE_OFFSET_FROM_BOTTOM;
-const WORLD_SPEED_PX_S = 260;
-const MOUNTAINS_PARALLAX = 0.35;
+const START_SPEED = 240;
+const MAX_SPEED = 520;
+const SPEED_MULT = 1.06;
+const SPEED_STEP_SEC = 6;
+const MOUNTAINS_FACTOR = 0.35;
+const START_SPAWN_MS = 1200;
+const MIN_SPAWN_MS = 650;
 const JUMP_VELOCITY = 680;
 const COYOTE_MS = 120;
 const JUMP_BUFFER_MS = 120;
@@ -39,6 +44,8 @@ export default class RunnerScene extends Phaser.Scene {
         this.isGameOver = false;
         this.coyoteUntil = 0;
         this.jumpBufferedUntil = 0;
+        this.worldSpeed = START_SPEED;
+        this.elapsedSinceSpeedUp = 0;
     }
 
     preload () {
@@ -83,9 +90,26 @@ export default class RunnerScene extends Phaser.Scene {
         this.jumpKey = this.input.keyboard.addKey('SPACE');
         this.obstacles = [];
         this.isGameOver = false;
+        this.worldSpeed = START_SPEED;
+        this.elapsedSinceSpeedUp = 0;
+
+        this.resetSpawnTimer();
+    }
+
+    getSpawnDelayMs () {
+        const scaledDelay = START_SPAWN_MS * (START_SPEED / this.worldSpeed);
+        return Phaser.Math.Clamp(scaledDelay, MIN_SPAWN_MS, START_SPAWN_MS);
+    }
+
+    resetSpawnTimer () {
+        const nextDelay = this.getSpawnDelayMs();
+
+        if (this.spawnTimer) {
+            this.spawnTimer.remove(false);
+        }
 
         this.spawnTimer = this.time.addEvent({
-            delay: 1200,
+            delay: nextDelay,
             loop: true,
             callback: () => this.spawnObstacle()
         });
@@ -156,10 +180,21 @@ export default class RunnerScene extends Phaser.Scene {
                 this.player.setVelocityY(-JUMP_VELOCITY);
             }
 
-            this.surface.tilePositionX += WORLD_SPEED_PX_S * dt;
-            this.mountains.tilePositionX += WORLD_SPEED_PX_S * MOUNTAINS_PARALLAX * dt;
+            this.elapsedSinceSpeedUp += dt;
+            if (this.elapsedSinceSpeedUp >= SPEED_STEP_SEC) {
+                this.elapsedSinceSpeedUp = 0;
+                const previousSpeed = this.worldSpeed;
+                this.worldSpeed = Math.min(MAX_SPEED, this.worldSpeed * SPEED_MULT);
 
-            const moveX = WORLD_SPEED_PX_S * dt;
+                if (this.worldSpeed > previousSpeed) {
+                    this.resetSpawnTimer();
+                }
+            }
+
+            this.surface.tilePositionX += this.worldSpeed * dt;
+            this.mountains.tilePositionX += this.worldSpeed * MOUNTAINS_FACTOR * dt;
+
+            const moveX = this.worldSpeed * dt;
             for (let i = this.obstacles.length - 1; i >= 0; i -= 1) {
                 const obstacle = this.obstacles[i];
                 obstacle.x -= moveX;
