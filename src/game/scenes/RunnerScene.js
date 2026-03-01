@@ -4,8 +4,11 @@ const VIEWPORT_WIDTH = 540;
 const VIEWPORT_HEIGHT = 960;
 const RUN_LINE_OFFSET_FROM_BOTTOM = 150;
 const RUN_LINE_Y = VIEWPORT_HEIGHT - RUN_LINE_OFFSET_FROM_BOTTOM;
-const BASE_SCROLL_SPEED = 200;
-const JUMP_VELOCITY = -420;
+const WORLD_SPEED_PX_S = 260;
+const MOUNTAINS_PARALLAX = 0.35;
+const JUMP_VELOCITY = 680;
+const COYOTE_MS = 120;
+const JUMP_BUFFER_MS = 120;
 const PLAYER_WIDTH = 60;
 const PLAYER_HEIGHT = 85;
 
@@ -34,6 +37,8 @@ export default class RunnerScene extends Phaser.Scene {
         this.obstacles = [];
         this.spawnTimer = null;
         this.isGameOver = false;
+        this.coyoteUntil = 0;
+        this.jumpBufferedUntil = 0;
     }
 
     preload () {
@@ -133,17 +138,28 @@ export default class RunnerScene extends Phaser.Scene {
     }
 
     update (_, delta) {
-        const deltaSec = delta / 1000;
+        const dt = delta / 1000;
 
         if (!this.isGameOver) {
-            if ((Phaser.Input.Keyboard.JustDown(this.jumpKey) || this.input.activePointer.justDown) && this.player.body.blocked.down) {
-                this.player.setVelocityY(JUMP_VELOCITY);
+            if (this.player.body.blocked.down) {
+                this.coyoteUntil = this.time.now + COYOTE_MS;
             }
 
-            this.surface.tilePositionX += BASE_SCROLL_SPEED * deltaSec;
-            this.mountains.tilePositionX += BASE_SCROLL_SPEED * 0.35 * deltaSec;
+            if (Phaser.Input.Keyboard.JustDown(this.jumpKey) || this.input.activePointer.justDown) {
+                this.jumpBufferedUntil = this.time.now + JUMP_BUFFER_MS;
+            }
 
-            const moveX = BASE_SCROLL_SPEED * deltaSec;
+            if (this.time.now < this.jumpBufferedUntil && this.time.now < this.coyoteUntil) {
+                this.jumpBufferedUntil = 0;
+                this.coyoteUntil = 0;
+                this.player.y -= 1;
+                this.player.setVelocityY(-JUMP_VELOCITY);
+            }
+
+            this.surface.tilePositionX += WORLD_SPEED_PX_S * dt;
+            this.mountains.tilePositionX += WORLD_SPEED_PX_S * MOUNTAINS_PARALLAX * dt;
+
+            const moveX = WORLD_SPEED_PX_S * dt;
             for (let i = this.obstacles.length - 1; i >= 0; i -= 1) {
                 const obstacle = this.obstacles[i];
                 obstacle.x -= moveX;
