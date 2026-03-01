@@ -16,36 +16,50 @@ export class GameOver extends Scene
 
         this.cameras.main.setBackgroundColor('#2a0d0d');
 
-        this.add.text(width * 0.5, height * 0.38, 'Game Over', {
+        this.add.text(width * 0.5, height * 0.35, 'Game Over', {
             fontFamily: 'Arial Black',
             fontSize: 56,
             color: '#ffffff',
             align: 'center'
         }).setOrigin(0.5);
 
-        this.add.text(width * 0.5, height * 0.5, `Score: ${score}`, {
+        this.add.text(width * 0.5, height * 0.47, `Score: ${score}`, {
             fontFamily: 'Arial',
             fontSize: 36,
             color: '#ffe08a',
             align: 'center'
         }).setOrigin(0.5);
 
-        this.add.text(width * 0.5, height * 0.58, `High Score: ${highScore}`, {
+        this.add.text(width * 0.5, height * 0.55, `High Score: ${highScore}`, {
             fontFamily: 'Arial',
             fontSize: 28,
             color: '#ffffff',
             align: 'center'
         }).setOrigin(0.5);
 
-        this.add.text(width * 0.5, height * 0.7, 'Press R to Restart', {
+        const restartButton = this.add.rectangle(width * 0.5, height * 0.68, 220, 68, 0x4fd1c5)
+            .setStrokeStyle(3, 0xffffff)
+            .setInteractive({ useHandCursor: true });
+
+        this.add.text(width * 0.5, height * 0.68, 'Restart', {
+            fontFamily: 'Arial Black',
+            fontSize: 30,
+            color: '#102a43'
+        }).setOrigin(0.5);
+
+        restartButton.on('pointerdown', () => {
+            this.scene.start('RunnerScene');
+        });
+
+        this.add.text(width * 0.5, height * 0.77, 'Нажми R для быстрого рестарта', {
             fontFamily: 'Arial',
-            fontSize: 28,
+            fontSize: 24,
             color: '#dddddd',
             align: 'center'
         }).setOrigin(0.5);
 
         this.input.keyboard.once('keydown-R', () => {
-            this.scene.start('MainMenu');
+            this.scene.start('RunnerScene');
         });
     }
 }
