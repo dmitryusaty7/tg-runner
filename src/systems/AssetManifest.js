@@ -1,9 +1,11 @@
+import { SCENE_LAYOUT } from '../config/gameConfig';
+
 export const ASSET_CONFIG = Object.freeze({
-    viewport: { width: 540, height: 960 },
+    viewport: { width: SCENE_LAYOUT.viewport.w, height: SCENE_LAYOUT.viewport.h },
     layers: [
         {
-            id: 'background',
-            key: 'background',
+            id: 'bg_space',
+            key: 'bg_space',
             type: 'static',
             file: 'layers/bg_space_540x960.png',
             width: 540,
@@ -11,7 +13,8 @@ export const ASSET_CONFIG = Object.freeze({
             size: { width: 540, height: 960 },
             anchor: 'top-left',
             zIndex: 0,
-            scaleMode: 'cover'
+            scaleMode: 'cover',
+            opacity: 1
         },
         {
             id: 'stars',
@@ -23,7 +26,7 @@ export const ASSET_CONFIG = Object.freeze({
             size: { width: 540, height: 960 },
             anchor: 'top-left',
             zIndex: 1,
-            opacity: 0.6
+            opacity: 1
         },
         {
             id: 'moon_surface',
