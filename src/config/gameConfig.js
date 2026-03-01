@@ -20,11 +20,11 @@ export const DEBUG_FAIRNESS = false;
 export const DEBUG = true;
 
 export const GROUND_THICKNESS = 80;
-export const GROUND_Y = 820;
+export const GROUND_Y = 840;
 
 export const VIEWPORT_WIDTH = 540;
 export const VIEWPORT_HEIGHT = 960;
-export const RUN_LINE_OFFSET_FROM_BOTTOM = 155;
+export const RUN_LINE_OFFSET_FROM_BOTTOM = 120;
 export const RUN_LINE_Y = VIEWPORT_HEIGHT - RUN_LINE_OFFSET_FROM_BOTTOM;
 export const GROUND_LINE_Y = GROUND_Y;
 
