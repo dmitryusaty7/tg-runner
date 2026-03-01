@@ -4,10 +4,8 @@ import {
     DEPTHS,
     GROUND_THICKNESS,
     GROUND_Y,
-    RUN_LINE_Y,
     HEIGHT,
     METEOR_COOLDOWN_SEGMENTS,
-    PLAYER_H,
     PLAYER_X,
     SEGMENT_WIDTH,
     SPEED_RAMP,
@@ -16,7 +14,6 @@ import {
 } from '../../config/gameConfig';
 import { ASSET_CONFIG } from '../../systems/AssetManifest';
 import { AssetLoader } from '../../systems/AssetLoader';
-import { LayerRenderer } from '../../systems/LayerRenderer';
 import { Player } from '../objects/Player';
 import { Difficulty } from '../systems/Difficulty';
 import { FairSpawn } from '../systems/FairSpawn';
@@ -45,8 +42,20 @@ export class RunnerScene extends Scene
         this.timeSinceSpawn = 0;
 
         this.assetLoader = null;
-        this.layerRenderer = null;
-        this.assetsReady = false;
+
+        this.backgroundLayer = null;
+        this.starsLayer = null;
+        this.moonSurfaceLayer = null;
+        this.mountainsLayer = null;
+    }
+
+    preload ()
+    {
+        // Стабильная загрузка фона через Phaser Loader (WebGL/Canvas).
+        this.load.image('bg_space', '/assets/images/layers/bg_space_540x960.png');
+        this.load.image('stars', '/assets/images/layers/bg_stars_overlay_540x960.png');
+        this.load.image('surface', '/assets/images/layers/layer_moon_surface_1080x210.png');
+        this.load.image('mountains', '/assets/images/layers/mountains_1080x155.png');
     }
 
     create ()
@@ -63,38 +72,36 @@ export class RunnerScene extends Scene
         this.cameras.main.setBackgroundColor('#0f0f0f');
         this.physics.world.setBounds(0, 0, WIDTH, HEIGHT);
 
-        if (DEBUG) {
+        if (DEBUG)
+        {
             console.log('[debug] scene start');
             console.log('[debug] viewport', ASSET_CONFIG.viewport);
-            console.log('[debug] RUN_LINE_Y', RUN_LINE_Y);
+            console.log('[debug] GROUND_Y', GROUND_Y);
         }
 
-        fetch('/assets/images/layers/bg_space_540x960.png')
-            .then((r) => {
-                if (DEBUG) {
-                    console.log('[assets] bg ok?', r.ok);
-                }
-            })
-            .catch(() => {
-                if (DEBUG) {
-                    console.warn('[assets] bg fetch failed');
-                }
-            });
+        this.setupLayerRendering();
+        this.startGameplay();
 
-        this.setupLayerRendering().then(() => {
-            this.assetsReady = true;
-            this.startGameplay();
-        });
+        if (DEBUG)
+        {
+            console.log('[scene] ready');
+        }
     }
 
     startGameplay ()
     {
         this.ground = this.add.rectangle(WIDTH / 2, GROUND_Y + GROUND_THICKNESS / 2, WIDTH, GROUND_THICKNESS, 0x2b2b2b)
-            .setDepth(DEPTHS.GROUND);
+            .setDepth(DEPTHS.GROUND)
+            .setAlpha(0.001);
         this.physics.add.existing(this.ground, true);
 
-        this.player = new Player(this, PLAYER_X, RUN_LINE_Y - PLAYER_H);
+        this.player = new Player(this, PLAYER_X, GROUND_Y, { groundY: GROUND_Y });
         this.physics.add.collider(this.player.sprite, this.ground);
+
+        this.assetLoader = new AssetLoader({ basePath: '/assets/images' });
+        this.assetLoader.loadAll(ASSET_CONFIG).catch((error) => {
+            console.warn('[assets] obstacle preload failed', error);
+        });
 
         this.obstacleManager = new ObstacleManager(this, {
             assetLoader: this.assetLoader,
@@ -130,37 +137,30 @@ export class RunnerScene extends Scene
 
         this.input.on('pointerdown', jump);
         this.input.keyboard.on('keydown-SPACE', jump);
-    }
 
-    async setupLayerRendering ()
-    {
-        this.assetLoader = new AssetLoader({ basePath: '/assets/images' });
-
-        await this.assetLoader.loadAll(ASSET_CONFIG).catch((error) => {
-            console.warn('[LayerRenderer] Ошибка загрузки ассетов слоёв:', error);
-        });
-
-        const ctx = this.game.canvas?.getContext('2d');
-        this.layerRenderer = new LayerRenderer({
-            ctx,
-            viewport: ASSET_CONFIG.viewport,
-            assetLoader: this.assetLoader,
-            layerConfig: ASSET_CONFIG.layers
-        });
-
-        this.game.events.on('prerender', this.renderLayers, this);
-        this.events.once('shutdown', () => {
-            this.game.events.off('prerender', this.renderLayers, this);
-        });
-    }
-
-    renderLayers ()
-    {
-        if (!this.layerRenderer) {
-            return;
+        if (DEBUG)
+        {
+            console.log('[scene] gameplay started');
         }
+    }
 
-        this.layerRenderer.render({ worldX: this.scrollX });
+    setupLayerRendering ()
+    {
+        const ySurface = HEIGHT - 210;
+        const yMountains = ySurface - 155;
+
+        this.backgroundLayer = this.add.image(0, 0, 'bg_space').setOrigin(0, 0).setDepth(DEPTHS.BACKGROUND);
+        this.starsLayer = this.add.image(0, 0, 'stars').setOrigin(0, 0).setDepth(DEPTHS.STARS);
+        this.moonSurfaceLayer = this.add.tileSprite(0, ySurface, WIDTH, 210, 'surface').setOrigin(0, 0).setDepth(DEPTHS.SURFACE);
+        this.mountainsLayer = this.add.tileSprite(0, yMountains, WIDTH, 155, 'mountains').setOrigin(0, 0).setDepth(DEPTHS.MOUNTAINS);
+
+        if (DEBUG)
+        {
+            console.log('[layers] created', { key: 'bg_space', w: WIDTH, h: HEIGHT, y: 0 });
+            console.log('[layers] created', { key: 'stars', w: WIDTH, h: HEIGHT, y: 0 });
+            console.log('[layers] created', { key: 'surface', w: WIDTH, h: 210, y: ySurface });
+            console.log('[layers] created', { key: 'mountains', w: WIDTH, h: 155, y: yMountains });
+        }
     }
 
     handleJump ()
@@ -234,6 +234,16 @@ export class RunnerScene extends Scene
         this.scoreText.setText(`Score: ${Math.floor(this.score)}`);
 
         this.scrollX += this.currentSpeed * (delta / 1000);
+
+        if (this.moonSurfaceLayer)
+        {
+            this.moonSurfaceLayer.tilePositionX = this.scrollX * 1.0;
+        }
+
+        if (this.mountainsLayer)
+        {
+            this.mountainsLayer.tilePositionX = this.scrollX * 0.35;
+        }
 
         this.segmentProgress += (this.currentSpeed * delta) / 1000;
         this.timeSinceSpawn += delta;

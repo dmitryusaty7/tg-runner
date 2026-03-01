@@ -60,6 +60,7 @@ export class AssetLoader {
 
         if (DEBUG) {
             console.log('[assets] loading', src);
+            this.logFetchStatus(src);
         }
 
         try {
@@ -88,6 +89,29 @@ export class AssetLoader {
             this.cache.set(key, asset);
             return asset;
         }
+    }
+
+    ensurePhaserTexture(scene, phaserKey, assetKey, fallbackW = 1, fallbackH = 1, placeholderColor = '#000000') {
+        const asset = this.get(assetKey);
+
+        if (asset?.img) {
+            if (scene.textures.exists(phaserKey)) {
+                scene.textures.remove(phaserKey);
+            }
+            scene.textures.addImage(phaserKey, asset.img);
+            return phaserKey;
+        }
+
+        if (scene.textures.exists(phaserKey)) {
+            scene.textures.remove(phaserKey);
+        }
+
+        const texture = scene.textures.createCanvas(phaserKey, fallbackW, fallbackH);
+        const context = texture.getContext();
+        context.fillStyle = placeholderColor;
+        context.fillRect(0, 0, fallbackW, fallbackH);
+        texture.refresh();
+        return phaserKey;
     }
 
     get(key) {
@@ -132,6 +156,15 @@ export class AssetLoader {
             image.onerror = () => reject(new Error(`Не удалось загрузить изображение: ${src}`));
             image.src = src;
         });
+    }
+
+    async logFetchStatus(src) {
+        try {
+            const response = await fetch(src, { method: 'HEAD' });
+            console.log('[assets] fetch', src, 'r.ok=', response.ok);
+        } catch (error) {
+            console.warn('[assets] fetch failed', src, error);
+        }
     }
 
     createPlaceholderCanvas(size, color) {
