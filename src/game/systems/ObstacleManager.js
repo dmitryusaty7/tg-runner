@@ -3,7 +3,6 @@ import {
     CRATER_W,
     DEPTHS,
     GROUND_Y,
-    RUN_LINE_Y,
     METEOR,
     DEBUG,
     ROCK_BIG_H,
@@ -112,7 +111,9 @@ export class ObstacleManager
     spawnMeteor (lane, x)
     {
         const { width, height } = this.getConfigSize('meteor', METEOR.W, METEOR.H);
-        const y = RUN_LINE_Y - height;
+        const laneToIndex = { HIGH: 0, MID: 1, LOW: 2 };
+        const laneIndex = laneToIndex[lane] ?? 2;
+        const y = METEOR.yLevels[laneIndex] ?? METEOR.yLevels[2];
         const textureKey = this.ensureObstacleTexture('meteor', width, height);
 
         const obstacle = this.obtainFromPool('meteor', () => {

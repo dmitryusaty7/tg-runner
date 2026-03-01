@@ -1,5 +1,7 @@
+import { SCENE_LAYOUT } from '../config/gameConfig';
+
 export const ASSET_CONFIG = Object.freeze({
-    viewport: { width: 540, height: 960 },
+    viewport: { width: SCENE_LAYOUT.viewport.w, height: SCENE_LAYOUT.viewport.h },
     layers: [
         {
             id: 'bg_space',
@@ -11,7 +13,8 @@ export const ASSET_CONFIG = Object.freeze({
             size: { width: 540, height: 960 },
             anchor: 'top-left',
             zIndex: 0,
-            scaleMode: 'cover'
+            scaleMode: 'cover',
+            opacity: 1
         },
         {
             id: 'stars',
