@@ -267,6 +267,16 @@ export class RunnerScene extends Scene
             this.mountainsLayer.tilePositionX = this.scrollX * 0.35;
         }
 
+        if (this.moonSurfaceLayer)
+        {
+            this.moonSurfaceLayer.tilePositionX = this.scrollX * 1.0;
+        }
+
+        if (this.mountainsLayer)
+        {
+            this.mountainsLayer.tilePositionX = this.scrollX * 0.35;
+        }
+
         this.segmentProgress += (this.currentSpeed * delta) / 1000;
         this.timeSinceSpawn += delta;
         while (this.segmentProgress >= SEGMENT_WIDTH)
