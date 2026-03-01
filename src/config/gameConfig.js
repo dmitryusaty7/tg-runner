@@ -20,11 +20,11 @@ export const DEBUG_FAIRNESS = false;
 export const DEBUG = true;
 
 export const GROUND_THICKNESS = 80;
-export const GROUND_Y = 820;
+export const GROUND_Y = 840;
 
 export const VIEWPORT_WIDTH = 540;
 export const VIEWPORT_HEIGHT = 960;
-export const RUN_LINE_OFFSET_FROM_BOTTOM = 155;
+export const RUN_LINE_OFFSET_FROM_BOTTOM = 120;
 export const RUN_LINE_Y = VIEWPORT_HEIGHT - RUN_LINE_OFFSET_FROM_BOTTOM;
 export const GROUND_LINE_Y = GROUND_Y;
 
@@ -61,25 +61,25 @@ export const DEPTHS = {
     UI: 10
 };
 
-export const PLAYER_W = 64;
-export const PLAYER_H = 96;
+export const PLAYER_W = 60;
+export const PLAYER_H = 85;
 export const PLAYER_X = 120;
 export const PLAYER_Y = GROUND_Y - PLAYER_H / 2;
 
-export const ROCK_SMALL_W = 44;
-export const ROCK_SMALL_H = 32;
-export const ROCK_BIG_W = 78;
-export const ROCK_BIG_H = 56;
+export const ROCK_SMALL_W = 60;
+export const ROCK_SMALL_H = 50;
+export const ROCK_BIG_W = 75;
+export const ROCK_BIG_H = 85;
 
-export const CRATER_W = 120;
-export const CRATER_DEPTH = 70;
+export const CRATER_W = 100;
+export const CRATER_DEPTH = 30;
 
 export const METEOR_LANE_LOW_Y = 600;
 export const METEOR_LANE_MID_Y = 560;
 export const METEOR_LANE_HIGH_Y = 520;
 
 export const METEOR = {
-    W: 56,
-    H: 28,
+    W: 85,
+    H: 40,
     yLevels: [METEOR_LANE_LOW_Y, METEOR_LANE_MID_Y, METEOR_LANE_HIGH_Y]
 };
