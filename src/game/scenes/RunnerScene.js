@@ -16,6 +16,7 @@ const COYOTE_MS = 120;
 const JUMP_BUFFER_MS = 120;
 const PLAYER_WIDTH = 60;
 const PLAYER_HEIGHT = 85;
+const LAND_MS = 120;
 
 const OBSTACLE_TYPES = Object.freeze([
     'crater',
@@ -46,6 +47,9 @@ export default class RunnerScene extends Phaser.Scene {
         this.jumpBufferedUntil = 0;
         this.worldSpeed = START_SPEED;
         this.elapsedSinceSpeedUp = 0;
+        this.playerState = 'run';
+        this.wasOnGround = true;
+        this.landUntil = 0;
     }
 
     preload () {
@@ -57,6 +61,9 @@ export default class RunnerScene extends Phaser.Scene {
         this.load.image('meteor', '/assets/images/obstacles/meteor_85x40.png');
         this.load.image('rock_big', '/assets/images/obstacles/rock_big_75x85.png');
         this.load.image('rock_small', '/assets/images/obstacles/rock_small_60x50.png');
+        this.load.image('player_run', '/assets/images/player/player_run_60x85.png');
+        this.load.image('player_jump', '/assets/images/player/player_jump_60x85.png');
+        this.load.image('player_land', '/assets/images/player/player_land_60x85.png');
     }
 
     create () {
@@ -68,16 +75,13 @@ export default class RunnerScene extends Phaser.Scene {
 
         const g = this.make.graphics({ x: 0, y: 0, add: false });
         g.fillStyle(0xffffff, 1);
-        g.fillRect(0, 0, PLAYER_WIDTH, PLAYER_HEIGHT);
-        g.generateTexture('player_rect', PLAYER_WIDTH, PLAYER_HEIGHT);
-        g.clear();
-        g.fillStyle(0xffffff, 1);
         g.fillRect(0, 0, VIEWPORT_WIDTH, 10);
         g.generateTexture('ground_rect', VIEWPORT_WIDTH, 10);
         g.destroy();
 
-        this.player = this.physics.add.sprite(100, RUN_LINE_Y, 'player_rect');
+        this.player = this.physics.add.sprite(100, RUN_LINE_Y, 'player_run');
         this.player.setOrigin(0.5, 1);
+        this.player.body.setSize(PLAYER_WIDTH, PLAYER_HEIGHT, true);
         this.player.body.setAllowGravity(true);
         this.player.body.setGravityY(1400);
         this.player.setCollideWorldBounds(true);
@@ -92,6 +96,9 @@ export default class RunnerScene extends Phaser.Scene {
         this.isGameOver = false;
         this.worldSpeed = START_SPEED;
         this.elapsedSinceSpeedUp = 0;
+        this.playerState = 'run';
+        this.wasOnGround = true;
+        this.landUntil = 0;
 
         this.resetSpawnTimer();
     }
@@ -161,7 +168,7 @@ export default class RunnerScene extends Phaser.Scene {
         this.input.keyboard.once('keydown-R', () => this.scene.restart());
     }
 
-    update (_, delta) {
+    update (time, delta) {
         const dt = delta / 1000;
 
         if (!this.isGameOver) {
@@ -194,10 +201,9 @@ export default class RunnerScene extends Phaser.Scene {
             this.surface.tilePositionX += this.worldSpeed * dt;
             this.mountains.tilePositionX += this.worldSpeed * MOUNTAINS_FACTOR * dt;
 
-            const moveX = this.worldSpeed * dt;
             for (let i = this.obstacles.length - 1; i >= 0; i -= 1) {
                 const obstacle = this.obstacles[i];
-                obstacle.x -= moveX;
+                obstacle.x -= this.worldSpeed * dt;
                 obstacle.body.updateFromGameObject();
 
                 if (obstacle.x < -200) {
@@ -205,6 +211,24 @@ export default class RunnerScene extends Phaser.Scene {
                     this.obstacles.splice(i, 1);
                 }
             }
+
+            const onGround = this.player.body.blocked.down;
+            if (!onGround) {
+                if (this.playerState !== 'jump') {
+                    this.player.setTexture('player_jump');
+                    this.playerState = 'jump';
+                }
+            } else {
+                if (!this.wasOnGround) {
+                    this.player.setTexture('player_land');
+                    this.playerState = 'land';
+                    this.landUntil = time + LAND_MS;
+                } else if (this.playerState === 'land' && time >= this.landUntil) {
+                    this.player.setTexture('player_run');
+                    this.playerState = 'run';
+                }
+            }
+            this.wasOnGround = onGround;
         }
     }
 }
