@@ -201,10 +201,9 @@ export default class RunnerScene extends Phaser.Scene {
             this.surface.tilePositionX += this.worldSpeed * dt;
             this.mountains.tilePositionX += this.worldSpeed * MOUNTAINS_FACTOR * dt;
 
-            const moveX = this.worldSpeed * dt;
             for (let i = this.obstacles.length - 1; i >= 0; i -= 1) {
                 const obstacle = this.obstacles[i];
-                obstacle.x -= moveX;
+                obstacle.x -= this.worldSpeed * dt;
                 obstacle.body.updateFromGameObject();
 
                 if (obstacle.x < -200) {
