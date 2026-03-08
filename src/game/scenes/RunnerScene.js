@@ -45,11 +45,12 @@ export default class RunnerScene extends Phaser.Scene {
         this.isGameOver = false;
         this.coyoteUntil = 0;
         this.jumpBufferedUntil = 0;
-        this.worldSpeed = START_SPEED;
+        this.worldSpeedPxS = START_SPEED;
         this.elapsedSinceSpeedUp = 0;
         this.playerState = 'run';
         this.wasOnGround = true;
         this.landUntil = 0;
+        this.debugSpeedLogUntil = 0;
     }
 
     preload () {
@@ -94,17 +95,18 @@ export default class RunnerScene extends Phaser.Scene {
         this.jumpKey = this.input.keyboard.addKey('SPACE');
         this.obstacles = [];
         this.isGameOver = false;
-        this.worldSpeed = START_SPEED;
+        this.worldSpeedPxS = START_SPEED;
         this.elapsedSinceSpeedUp = 0;
         this.playerState = 'run';
         this.wasOnGround = true;
         this.landUntil = 0;
+        this.debugSpeedLogUntil = this.time.now + 2000;
 
         this.resetSpawnTimer();
     }
 
     getSpawnDelayMs () {
-        const scaledDelay = START_SPAWN_MS * (START_SPEED / this.worldSpeed);
+        const scaledDelay = START_SPAWN_MS * (START_SPEED / this.worldSpeedPxS);
         return Phaser.Math.Clamp(scaledDelay, MIN_SPAWN_MS, START_SPAWN_MS);
     }
 
@@ -139,6 +141,8 @@ export default class RunnerScene extends Phaser.Scene {
 
         const obstacle = this.physics.add.image(x, y, type).setOrigin(0, 0);
         obstacle.body.setAllowGravity(false);
+        obstacle.body.setVelocityX(0);
+        obstacle.body.moves = false;
         obstacle.setImmovable(true);
 
         this.physics.add.overlap(this.player, obstacle, () => this.handleGameOver(), null, this);
@@ -190,26 +194,30 @@ export default class RunnerScene extends Phaser.Scene {
             this.elapsedSinceSpeedUp += dt;
             if (this.elapsedSinceSpeedUp >= SPEED_STEP_SEC) {
                 this.elapsedSinceSpeedUp = 0;
-                const previousSpeed = this.worldSpeed;
-                this.worldSpeed = Math.min(MAX_SPEED, this.worldSpeed * SPEED_MULT);
+                const previousSpeed = this.worldSpeedPxS;
+                this.worldSpeedPxS = Math.min(MAX_SPEED, this.worldSpeedPxS * SPEED_MULT);
 
-                if (this.worldSpeed > previousSpeed) {
+                if (this.worldSpeedPxS > previousSpeed) {
                     this.resetSpawnTimer();
                 }
             }
 
-            this.surface.tilePositionX += this.worldSpeed * dt;
-            this.mountains.tilePositionX += this.worldSpeed * MOUNTAINS_FACTOR * dt;
+            this.surface.tilePositionX += this.worldSpeedPxS * dt;
+            this.mountains.tilePositionX += this.worldSpeedPxS * MOUNTAINS_FACTOR * dt;
 
             for (let i = this.obstacles.length - 1; i >= 0; i -= 1) {
                 const obstacle = this.obstacles[i];
-                obstacle.x -= this.worldSpeed * dt;
+                obstacle.x -= this.worldSpeedPxS * dt;
                 obstacle.body.updateFromGameObject();
 
                 if (obstacle.x < -200) {
                     obstacle.destroy();
                     this.obstacles.splice(i, 1);
                 }
+            }
+
+            if (time <= this.debugSpeedLogUntil) {
+                console.log('speed', this.worldSpeedPxS, 'surface', this.surface.tilePositionX, 'obs0x', this.obstacles[0]?.x);
             }
 
             const onGround = this.player.body.blocked.down;
